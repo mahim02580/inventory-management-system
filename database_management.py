@@ -10,10 +10,11 @@ class Base(DeclarativeBase):
 # ------------------------------------------Table Models------------------------------------------
 class Product(Base):
     __tablename__ = "products"
-    id: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(nullable=False)
-    unit_price: Mapped[int] = mapped_column(nullable=False)
     stock: Mapped[int] = mapped_column(nullable=False)
+    unit_type: Mapped[str] = mapped_column(nullable=False)
+    unit_price: Mapped[int] = mapped_column(nullable=False)
 
 
 class Customer(Base):
@@ -22,6 +23,41 @@ class Customer(Base):
     name: Mapped[str] = mapped_column(nullable=False)
     address: Mapped[str] = mapped_column()
     purchases = relationship("Invoice", back_populates="customer")
+
+
+class Purchase(Base):
+    __tablename__ = "purchases"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id"))
+    supplier = relationship("Supplier", back_populates="orders")
+    items = relationship("PurchaseItem", back_populates="purchase")
+    purchase_date: Mapped[date] = mapped_column(Date, default=lambda: datetime.today().date(), nullable=False)
+    delivery_date: Mapped[date] = mapped_column(Date, nullable=False)
+    total_payable: Mapped[int] = mapped_column(nullable=False)
+    paid: Mapped[int] = mapped_column(nullable=False)
+    due: Mapped[int] = mapped_column(nullable=False)
+    status: Mapped[str] = mapped_column(nullable=False)
+
+
+class Supplier(Base):
+    __tablename__ = "suppliers"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(nullable=False)
+    orders = relationship(Purchase, back_populates="supplier")
+
+
+class PurchaseItem(Base):
+    __tablename__ = "purchase_items"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    purchase_id: Mapped[int] = mapped_column(ForeignKey("purchases.id"), nullable=False)
+    product_code: Mapped[int] = mapped_column(ForeignKey("products.code"))
+    product_name: Mapped[str] = mapped_column(nullable=False)
+    quantity: Mapped[int] = mapped_column(nullable=False)
+    unit_type: Mapped[str] = mapped_column(nullable=False)
+    unit_price: Mapped[int] = mapped_column(nullable=False)
+    subtotal: Mapped[int] = mapped_column(nullable=False)
+
+    purchase = relationship("Purchase", back_populates="items")
 
 
 class Invoice(Base):
@@ -46,7 +82,7 @@ class SaleItem(Base):
     __tablename__ = "sales"
     id: Mapped[int] = mapped_column(primary_key=True)
     invoice_id: Mapped[int] = mapped_column(ForeignKey("invoices.id"), nullable=False)
-    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.code"))
     product_name: Mapped[str] = mapped_column(nullable=False)
     unit_price: Mapped[int] = mapped_column(nullable=False)
     quantity: Mapped[int] = mapped_column(nullable=False)
@@ -79,6 +115,11 @@ session = Session(engine)
 def get_product_by_name(product_name):
     """Gets a specific product using product_name"""
     product = session.execute(select(Product).where(Product.name == product_name)).scalar()
+    return product
+
+
+def get_product_by_code(code):
+    product = session.get(Product, int(code))
     return product
 
 
@@ -115,8 +156,8 @@ def adjust_stock_of_product(product_id, quantity):
     session.commit()
 
 
-def update_stock_of_product(product_name, new_stock):
-    product = get_product_by_name(product_name)
+def update_stock_of_product(product_id, new_stock):
+    product = session.get(Product, int(product_id))
     product.stock += int(new_stock)
     session.commit()
 
@@ -171,3 +212,52 @@ def update_changes():
 def get_saleitem(sale_id):
     saleitem = session.get(SaleItem, sale_id)
     return saleitem
+
+
+# Purchase Management
+def get_purchase_by_id(id_no):
+    purchase = session.get(Purchase, int(id_no))
+    return purchase
+
+
+def get_all_purchases():
+    all_purchases = session.execute(select(Purchase)).scalars().all()
+    return all_purchases
+
+
+def get_due_purchases():
+    due_purchases = session.execute(select(Purchase).where(Purchase.due > 0)).scalars().all()
+    return due_purchases
+
+
+def get_today_delivery_purchases():
+    today = datetime.today().date()
+    today_delivery_purchases = session.execute(select(Purchase).where(Purchase.delivery_date == today)).scalars().all()
+    return today_delivery_purchases
+
+
+def get_purchases_by_supplier_name(supplier_name):
+    supplier = session.execute(select(Supplier).where(Supplier.name == supplier_name)).scalar()
+    purchases_for_the_supplier = supplier.orders
+    return purchases_for_the_supplier
+
+
+def get_purchases_by_purchase_date(purchase_date):
+    purchases = session.execute(select(Purchase).where(Purchase.purchase_date == purchase_date)).scalars().all()
+    return purchases
+
+
+def get_purchases_by_delivery_date(delivery_date):
+    purchases = session.execute(select(Purchase).where(Purchase.delivery_date == delivery_date)).scalars().all()
+    return purchases
+
+
+# Supplier Management
+def get_supplier_by_name(name):
+    supplier = session.execute(select(Supplier).where(Supplier.name == name)).scalar()
+    return supplier
+
+
+def add_supplier(supplier):
+    session.add(supplier)
+    session.commit()
