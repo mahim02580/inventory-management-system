@@ -1,9 +1,8 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
-
-import helpers
-from helpers import AutoCompleteEntry
+from utils import helpers
+from utils.helpers import AutoCompleteEntry
 
 
 class ProductsFrame(tk.Frame):
@@ -60,7 +59,7 @@ class ProductsFrame(tk.Frame):
                  width=25,
                  font=("Segoe UI", 12)).grid(row=1, column=0, padx=5, sticky=tk.NSEW)
 
-        self.product_to_update_stock_entry = AutoCompleteEntry(stock_entry_frame, db_path="database.db", font=("Arial", 12))
+        self.product_to_update_stock_entry = AutoCompleteEntry(stock_entry_frame, db_path="../database/database.db", font=("Arial", 12))
         self.product_to_update_stock_entry.grid(row=2, column=0, padx=5, pady=(0, 10), sticky=tk.NSEW)
 
         tk.Label(stock_entry_frame,

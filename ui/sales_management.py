@@ -1,8 +1,504 @@
 import datetime
+import re
 import tkinter as tk
+from tkinter.font import Font
 from tkinter import ttk, messagebox
 from tkcalendar import DateEntry
-import helpers
+from utils import helpers
+
+
+class NewSaleFrame(tk.Frame):
+    def __init__(self, parent, dbmanager):
+        super().__init__(parent)
+        self.configure(padx=20, pady=20)
+        self.parent = parent
+        self.dbmanager = dbmanager
+
+        # Product Selection Frame--------------------------------------------------------------------------------------------
+        ## Upper Part
+        product_selection_frame = tk.Frame(self)
+        product_selection_frame.grid(row=0, column=0)
+
+        tk.Label(product_selection_frame,
+                 text="Select Product:",
+                 font=("Arial", 15),).grid(row=0, column=0, sticky=tk.W)
+
+        self.product_name_search_entry = helpers.AutoCompleteEntry(product_selection_frame, db_path="database/database.db", font=("Arial", 15), width=35)
+        self.product_name_search_entry.grid(row=0, column=1)
+
+        tk.Label(product_selection_frame,
+                 text="Quantity:",
+                 font=Font(size=15),).grid(row=0, column=2)
+
+        self.quantity = tk.Spinbox(product_selection_frame, from_=1, to=100000, font=("Arial", 15), width=7,
+                                   validate="key",
+                                   validatecommand=(product_selection_frame.register(helpers.is_digit), "%P"))
+        self.quantity.grid(row=0, column=3)
+
+        ttk.Button(product_selection_frame, text="Add", command=self.add_item).grid(row=0, column=4)
+
+        ## Lower Part
+        columns = ("Code", "Product Name", "Quantity", "Unit Type", "Unit Price", "Subtotal")
+        treeview_style = ttk.Style(product_selection_frame)
+        treeview_style.configure("Treeview",
+                                 font=("Segoe UI", 12),
+                                 rowheight=30,
+                                 borderwidth=0,
+                                 highlightthickness=0)
+        treeview_style.configure("Treeview.Heading",
+                                 background="#e0e0e0",
+                                 foreground="black",
+                                 font=("Segoe UI", 12, "bold"))
+
+        self.menu = tk.Menu(product_selection_frame, tearoff=0)
+        self.menu.add_command(label="Delete", command=self.delete_item)
+
+        self.product_entry_treeview = ttk.Treeview(product_selection_frame,
+                                                   columns=columns,
+                                                   show="headings",
+                                                   height=19,
+                                                   style="Treeview")
+        self.product_entry_treeview.bind("<Double-1>", self.edit_unit_price)
+        self.product_entry_treeview.bind("<Button-3>", self.show_menu)
+
+        self.product_entry_treeview.tag_configure("product_entry_row", background="#f0f0f0")
+
+        for col in columns:
+            self.product_entry_treeview.heading(col, text=col)
+
+        self.product_entry_treeview.column("Code", width=100, stretch=False, )
+        self.product_entry_treeview.column("Product Name", width=324, stretch=False, )
+        self.product_entry_treeview.column("Quantity", width=100, stretch=False, anchor=tk.CENTER)
+        self.product_entry_treeview.column("Unit Type", width=100, stretch=False, anchor=tk.CENTER)
+        self.product_entry_treeview.column("Unit Price", width=100, stretch=False, anchor=tk.CENTER)
+        self.product_entry_treeview.column("Subtotal", width=100, stretch=False, anchor=tk.CENTER)
+
+        self.product_entry_treeview.grid(row=1, column=0, columnspan=5, pady=20)
+
+        scrollbar = ttk.Scrollbar(product_selection_frame, orient=tk.VERTICAL,
+                                  command=self.product_entry_treeview.yview)
+        scrollbar.grid(row=1, column=5, sticky=tk.NS, pady=20)
+        self.product_entry_treeview.configure(yscrollcommand=scrollbar.set)
+
+        # Invoice Making Frame--------------------------------------------------------------------------------------------
+        invoice_frame = tk.Frame(self)
+        invoice_frame.grid(row=0, column=1, sticky=tk.N, padx=(20, 0))
+
+        tk.Label(invoice_frame,
+                 text="Total Items",
+                 font=("Arial", 16, "bold"),
+                 anchor=tk.W
+                 ).grid(row=0, column=0, sticky=tk.W)
+        tk.Label(invoice_frame,
+                 text=":",
+                 font=("Arial", 16, "bold"),
+                 anchor=tk.W
+                 ).grid(row=0, column=1)
+        self.total_items = tk.IntVar(value=0)
+
+        tk.Label(invoice_frame,
+                 textvariable=self.total_items,
+                 fg="white",
+                 bg="black",
+                 font=("Arial", 16, "bold"),
+                 anchor=tk.E, ).grid(row=0, column=2, sticky=tk.NSEW)
+
+        self.mrp_total = tk.IntVar(value=0)
+        self.total = tk.IntVar(value=0)
+
+        # MRP Total
+        ttk.Separator(invoice_frame, orient="horizontal").grid(row=1, column=0, columnspan=3, pady=(21, 0),
+                                                               sticky=tk.EW)
+        tk.Label(invoice_frame,
+                 text="MRP Total",
+                 fg="white",
+                 bg="#2c3e50",
+                 font=("Segoe UI", 12),
+                 anchor=tk.W, ).grid(row=2, column=0, sticky=tk.NSEW)
+        tk.Label(invoice_frame,
+                 text=":",
+                 fg="white",
+                 bg="#2c3e50",
+                 font=("Segoe UI", 12)).grid(row=2, column=1, sticky=tk.NSEW)
+
+        tk.Label(invoice_frame,
+                 textvariable=self.mrp_total,
+                 fg="white",
+                 bg="#2c3e50",
+                 font=("Segoe UI", 12),
+                 width=6,
+                 anchor=tk.E).grid(row=2, column=2, sticky=tk.NSEW)
+
+        # (-) Discount
+        tk.Label(invoice_frame,
+                 text="(-) Discount)",
+                 fg="white",
+                 bg="#2c3e50",
+                 font=("Segoe UI", 12),
+                 anchor=tk.W).grid(row=3, column=0, sticky=tk.NSEW)
+        tk.Label(invoice_frame,
+                 text=":",
+                 fg="white",
+                 bg="#2c3e50",
+                 font=("Segoe UI", 12),
+                 ).grid(row=3, column=1, sticky=tk.NSEW)
+
+        self.discount_entry = tk.Entry(invoice_frame,
+                                       width=6,
+                                       highlightbackground="#2c3e50",
+                                       highlightthickness=1,
+                                       highlightcolor="#2c3e50",
+                                       font=("Segoe UI", 12),
+                                       justify=tk.RIGHT, )
+
+        self.discount_entry.insert(tk.END, "0")
+        self.discount_entry.grid(row=3, column=2, sticky=tk.EW)
+
+        # Total Payable
+        ttk.Separator(invoice_frame, orient="horizontal").grid(row=4, column=0, columnspan=3, sticky=tk.EW)
+        tk.Label(invoice_frame,
+                 text="Total Payable",
+                 bg="#2c3e50",
+                 font=("Segoe UI", 12, "bold"),
+                 anchor=tk.W,
+                 fg="white").grid(row=5, column=0, sticky=tk.NSEW)
+        tk.Label(invoice_frame,
+                 text=":",
+                 bg="#2c3e50",
+                 font=("Segoe UI", 12),
+                 fg="white").grid(row=5, column=1, sticky=tk.NSEW)
+        tk.Label(invoice_frame,
+                 textvariable=self.total,
+                 bg="#2c3e50",
+                 font=("Segoe UI", 12, "bold"),
+                 anchor=tk.E,
+                 width=6,
+                 fg="white").grid(row=5, column=2, sticky=tk.NSEW)
+
+
+        # It has to be here because of self.update_total method.
+        # In self.update_total method there is another method called self.calculate_change_due(called inside of self.update_total).
+        # In self.calculate change due we referred self.payment_methods_treeview
+        self.discount_entry.config(validate="key", validatecommand=(invoice_frame.register(self.update_total), "%P"))
+
+        # Total Paid + Change + Due-------------------------------------------------------------------------------------
+
+        ## Total Paid
+        ttk.Separator(invoice_frame, orient="horizontal").grid(row=7, column=0, columnspan=3, sticky=tk.EW)
+        tk.Label(invoice_frame,
+                 text="Paid",
+                 bg="#2c3e50",
+                 font=("Segoe UI", 12),
+                 anchor=tk.W,
+                 fg="white").grid(row=8, column=0, sticky=tk.NSEW)
+        tk.Label(invoice_frame,
+                 text=":",
+                 bg="#2c3e50",
+                 font=("Segoe UI", 12),
+                 fg="white").grid(row=8, column=1, sticky=tk.NSEW)
+        self.paid_entry = tk.Entry(invoice_frame,
+            width=6,
+            highlightbackground="#2c3e50",
+            highlightthickness=1,
+            highlightcolor="#2c3e50",
+            font=("Segoe UI", 12),
+            justify=tk.RIGHT,
+        )
+        self.paid_entry.grid(row=8, column=2, sticky=tk.NSEW)
+        self.paid_entry.insert(tk.END, "0")
+        self.paid_entry.config(validate="key", validatecommand=(invoice_frame.register(self.calculate_change_due), "%P"))
+
+
+        ## Change
+        tk.Label(invoice_frame,
+                 text="Change",
+                 fg="white",
+                 bg="#2c3e50",
+                 font=("Segoe UI", 12),
+                 anchor=tk.W).grid(row=9, column=0, sticky=tk.NSEW)
+        tk.Label(invoice_frame,
+                 text=":",
+                 fg="white",
+                 bg="#2c3e50",
+                 font=("Segoe UI", 12), ).grid(row=9, column=1, sticky=tk.NSEW)
+        self.change = tk.IntVar(value=0)
+        tk.Label(invoice_frame,
+                 textvariable=self.change,
+                 fg="white",
+                 bg="#2c3e50",
+                 font=("Segoe UI", 12),
+                 anchor=tk.E).grid(row=9, column=2, sticky=tk.NSEW)
+
+        ## Due
+        tk.Label(invoice_frame,
+                 text="Due",
+                 fg="white",
+                 bg="#2c3e50",
+                 font=("Segoe UI", 12),
+                 anchor=tk.W, ).grid(row=10, column=0, sticky=tk.NSEW)
+        tk.Label(invoice_frame,
+                 text=":",
+                 bg="#2c3e50", font=("Segoe UI", 12),
+                 fg="white").grid(
+            row=10, column=1, sticky=tk.NSEW)
+        self.due = tk.IntVar(value=0)
+        tk.Label(invoice_frame,
+                 textvariable=self.due,
+                 fg="white",
+                 bg="#2c3e50",
+                 font=("Segoe UI", 12),
+                 anchor=tk.E).grid(row=10, column=2, sticky=tk.NSEW)
+
+        # Customer Details Frame
+        customer_details_frame = tk.Frame(invoice_frame)
+        customer_details_frame.grid(row=11, column=0, columnspan=3, pady=20, sticky=tk.NSEW)
+
+        tk.Label(customer_details_frame,
+                 text="Customer Phone",
+                 fg="white",
+                 bg="#2c3e50",
+                 font=("Segoe UI", 12), ).grid(row=0, column=0, columnspan=2, sticky=tk.NSEW)
+
+        self.customer_phone_entry = tk.Entry(customer_details_frame, validate="key",
+                                             validatecommand=(
+                                                 customer_details_frame.register(helpers.validate_phonenumber),
+                                                 "%P",),
+                                             font=("Segoe UI", 12))
+        self.customer_phone_entry.grid(row=1, column=0, columnspan=2, sticky=tk.NSEW)
+
+        ttk.Button(customer_details_frame,
+                   text="Search",
+                   width=7,
+                   command=self.search_customer).grid(row=0, column=2, rowspan=2, padx=(15, 0), sticky=tk.NS)
+
+        tk.Label(customer_details_frame,
+                 text="Customer Name",
+                 bg="#2c3e50",
+                 fg="white",
+                 font=("Segoe UI", 12), ).grid(row=2, column=0, columnspan=3, pady=(10, 0), sticky=tk.NSEW)
+        self.customer_name_entry = tk.Entry(customer_details_frame, font=("Segoe UI", 12))
+        self.customer_name_entry.grid(row=3, column=0, columnspan=3, sticky=tk.EW)
+
+        tk.Label(customer_details_frame,
+                 text="Customer Address",
+                 fg="white",
+                 bg="#2c3e50",
+                 font=("Segoe UI", 12)).grid(row=4, column=0, columnspan=3, pady=(10, 0), sticky=tk.NSEW)
+        self.customer_address_entry = tk.Text(customer_details_frame, height=2, width=20, font=("Segoe UI", 12))
+        self.customer_address_entry.grid(row=5, column=0, columnspan=3, sticky=tk.EW)
+
+        ttk.Button(customer_details_frame,
+                   text="PRINT",
+                   command=self.print_invoice).grid(row=6, column=0, columnspan=3, pady=(32, 0), sticky=tk.EW)
+
+        self.refresh()
+
+    def delete_item(self, items=None):
+        selected = items or self.product_entry_treeview.selection()
+        if not selected:
+            return
+
+        for item in selected:
+            self.product_entry_treeview.delete(item)
+
+        # Update calculation after deleting an item
+        self.update_calculation()
+
+    def show_menu(self, event):
+        iid = self.product_entry_treeview.identify_row(event.y)
+        if iid:
+            self.product_entry_treeview.selection_set(iid)
+            self.menu.tk_popup(event.x_root, event.y_root)
+
+
+    def edit_unit_price(self, event):
+        # Detect row and column
+        region = self.product_entry_treeview.identify("region", event.x, event.y)
+        if region != "cell":
+            return
+        row_id = self.product_entry_treeview.identify_row(event.y)
+        column = self.product_entry_treeview.identify_column(event.x)
+
+        # Column index
+        col_index = int(column.replace("#", "")) - 1
+        # Return, if column is not Amount Column
+        if col_index == 0 or col_index == 1 or col_index == 3  or col_index == 5:
+            return
+
+        x, y, width, height = self.product_entry_treeview.bbox(row_id, column)
+
+        # Current value
+        value = self.product_entry_treeview.item(row_id, "values")[col_index]
+
+        # Overlay Entry widget
+        entry = tk.Entry(self.product_entry_treeview, font=("Segoe UI", 12), justify=tk.CENTER)
+        entry.place(x=x, y=y, width=width, height=height)
+        entry.insert(0, value)
+        entry.focus()
+
+        def save_edit():
+            new_val = entry.get()
+            values = list(self.product_entry_treeview.item(row_id, "values"))
+            values[col_index] = new_val
+            values[-1] = str(int(values[2]) * int(values[4]))
+            self.product_entry_treeview.item(row_id, values=values)
+            entry.destroy()
+            self.update_calculation()
+
+        entry.bind("<Return>", lambda e: save_edit())
+        entry.bind("<FocusOut>", lambda e: save_edit())
+
+    def add_item(self):
+        product_code = self.product_name_search_entry.get().split("-")[0].strip()
+        quantity = int(self.quantity.get())
+
+        product = self.dbmanager.get_product_by_code(product_code)
+        if not product:
+            messagebox.showerror("Not Found", "This product doesn't exist!")
+
+        subtotal = int(product.unit_price) * quantity
+        try:
+            self.product_entry_treeview.insert("", tk.END, iid=product.code,
+                                               values=(product.code, product.name, quantity, product.unit_type,
+                                                       product.unit_price, subtotal),
+                                               tags="product_entry_row")
+        except tk.TclError:
+            messagebox.showinfo("Duplicate Found", f"{product.name} already taken!")
+        self.update_calculation()
+        self.product_name_search_entry.delete(0, tk.END)
+
+    def update_calculation(self):
+        # Update Total Items
+        total_item = len(self.product_entry_treeview.get_children())
+        self.total_items.set(total_item)
+        # Update MRP Total
+        mrp_total_list = [int(self.product_entry_treeview.item(item, "values")[-1]) for item in
+                          self.product_entry_treeview.get_children()]
+        mrp_total = sum(mrp_total_list)
+        self.mrp_total.set(mrp_total)
+
+        # Update total after subtracting discount
+        discount = self.discount_entry.get()
+        self.update_total(discount)
+
+    def update_total(self, new_value):
+        if new_value == "":
+            new_value = "0"
+
+        if not new_value.isdigit():
+            return False  # block anything that's not a number
+
+        # Update total after subtracting discount
+        mrp_total = self.mrp_total.get()
+        discount = int(new_value)
+        self.total.set(mrp_total - discount)
+        self.calculate_change_due(self.paid_entry.get())
+        return True
+
+    def calculate_change_due(self, paid_amount):
+        if paid_amount == "":
+            paid_amount = "0"
+
+        if not paid_amount.isdigit():
+            return False  # block anything that's not a number
+
+        paid_amount = int(paid_amount) # Converting str to int
+        if self.total.get() < paid_amount:
+            self.change.set(paid_amount - self.total.get())
+            self.due.set(0)
+        else:
+            self.due.set(self.total.get() - paid_amount)
+            self.change.set(0)
+
+        return True
+
+    def refresh(self):
+        # Deletes all item in the Product Entry Treeview
+        self.delete_item(self.product_entry_treeview.get_children())
+
+
+        # Clears all entries
+        self.discount_entry.delete(0, tk.END)
+        self.discount_entry.insert(0, "0")
+        self.customer_phone_entry.config(bg="white")
+        self.customer_phone_entry.delete(0, tk.END)
+        self.customer_name_entry.delete(0, tk.END)
+        self.customer_address_entry.delete("1.0", tk.END)
+
+    def search_customer(self):
+        customer_phone = self.customer_phone_entry.get()
+        is_valid_phone_number = bool(re.fullmatch(r'^01[3-9]\d{8}$', customer_phone))
+        if not is_valid_phone_number:
+            messagebox.showerror("Error", "Provide a valid phone number!")
+            return
+
+        if customer_phone:
+            customer = self.dbmanager.get_customer_by_phone(customer_phone)
+            if customer:
+                self.customer_phone_entry.config(bg="green")
+
+                self.customer_name_entry.delete(0, tk.END)  # Removes everything if previously exists anything
+                self.customer_name_entry.insert(tk.END, customer.name)
+
+                self.customer_address_entry.delete("1.0", tk.END)
+                self.customer_address_entry.insert(tk.END, customer.address)
+            else:
+                self.customer_phone_entry.config(bg="red")
+                self.customer_name_entry.delete(0, tk.END)
+                self.customer_address_entry.delete("1.0", tk.END)
+
+    def print_invoice(self):
+        if not self.product_entry_treeview.get_children():
+            messagebox.showerror(title="Error", message="Please add products to print invoice.")
+            return
+        current_customer_phone = self.customer_phone_entry.get()
+        if current_customer_phone:
+            current_customer = self.dbmanager.get_customer_by_phone(current_customer_phone)
+            if not current_customer:
+                # Make Customer
+                current_customer = self.dbmanager.Customer(
+                    name=self.customer_name_entry.get(),
+                    phone=self.customer_phone_entry.get(),
+                    address=self.customer_address_entry.get("1.0", tk.END),
+                )
+                # Add Customer
+                self.dbmanager.add_customer(current_customer)
+        else:
+            current_customer = self.dbmanager.get_customer_by_phone("01700000000")
+
+        # Make Invoice
+        # Add products to invoice
+        invoice = self.dbmanager.Invoice(
+            customer_id=current_customer.phone,
+            mrp_total=self.mrp_total.get(),
+            discount=self.discount_entry.get(),
+            total_payable=self.total.get(),
+            paid=self.paid_entry.get(),
+            change=self.change.get(),
+            due=self.due.get(),
+        )
+        for row_id in self.product_entry_treeview.get_children():
+            code, product_name, quantity, unit_type, unit_price, subtotal = self.product_entry_treeview.item(row_id, "values")
+
+            # Male SaleItem for each product
+            saleitem = self.dbmanager.SaleItem(
+                product_id=int(code),
+                product_name=product_name,
+                quantity=int(quantity),
+                unit_price=int(unit_price),
+                subtotal=int(subtotal),
+            )
+            # Add SaleItem to invoice
+            invoice.items.append(saleitem)
+            # Adjust stock while looping over through the TreeView
+            self.dbmanager.adjust_stock_of_product(saleitem.product_id, saleitem.quantity)
+
+        self.dbmanager.add_purchase(invoice)
+        print_invoice = messagebox.askyesno(title="Invoice Print", message="Do you want to print invoice?")
+        if print_invoice:
+            ready_invoice = helpers.make_invoice_for_purchase(invoice)
+            helpers.print_out_invoice(ready_invoice)
+        self.refresh()
 
 class RefundFrame:
     def __init__(self, parent, invoice, dbmanager):

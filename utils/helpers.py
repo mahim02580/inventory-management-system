@@ -45,7 +45,7 @@ def make_invoice_for_purchase(invoice):
     return ready_invoice
 
 
-def print_out_invoice(invoice: str):
+def print_out_invoice(invoice):
     printer_name = win32print.GetDefaultPrinter()
 
     hprinter = win32print.OpenPrinter(printer_name)

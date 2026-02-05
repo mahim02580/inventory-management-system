@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-import helpers
+from utils import helpers
 
 
 class CustomersFrame(tk.Frame):
@@ -50,7 +50,8 @@ class CustomersFrame(tk.Frame):
                  bg="#2c3e50",
                  fg="white",
                  font=("Segoe UI", 12)).grid(row=3, column=0, padx=5, sticky=tk.NSEW)
-        self.customer_phone_entry = tk.Entry(new_customer_entry_frame, validate="key", validatecommand=(self.register(helpers.is_digit), "%P"), font=("Segoe UI", 12), )
+        self.customer_phone_entry = tk.Entry(new_customer_entry_frame, validate="key", validatecommand=(self.register(
+            helpers.is_digit), "%P"), font=("Segoe UI", 12), )
         self.customer_phone_entry.grid(row=4, column=0, pady=(0, 10), padx=5, sticky=tk.EW)
 
         tk.Label(new_customer_entry_frame,

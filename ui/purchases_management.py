@@ -2,9 +2,9 @@ import datetime
 import tkinter as tk
 from tkinter import ttk, messagebox
 from tkcalendar import DateEntry
-from helpers import AutoCompleteEntry, AutoCompleteEntryForSuppliers
+from utils.helpers import AutoCompleteEntry, AutoCompleteEntryForSuppliers
 from tkinter.font import Font
-import helpers
+from utils import helpers
 
 
 class NewPurchase(tk.Frame):
@@ -22,9 +22,9 @@ class NewPurchase(tk.Frame):
         tk.Label(product_selection_frame, text="Select Product:", font=("Arial", 15), ).grid(row=0, column=0,
                                                                                              sticky=tk.W)
 
-        self.product_name_entry = AutoCompleteEntry(product_selection_frame, db_path="database.db", font=("Arial", 15),
-                                                    width=35)
-        self.product_name_entry.grid(row=0, column=1, sticky=tk.EW)
+        self.product_name_search_entry = AutoCompleteEntry(product_selection_frame, db_path="database/database.db", font=("Arial", 15),
+                                                           width=35)
+        self.product_name_search_entry.grid(row=0, column=1, sticky=tk.EW)
 
         tk.Label(product_selection_frame,
                  text="Quantity:",
@@ -38,7 +38,7 @@ class NewPurchase(tk.Frame):
         ttk.Button(product_selection_frame, text="Add", command=self.add_item).grid(row=0, column=4)
 
         ## Lower Part
-        columns = ("Code", "Product Name", "Quantity", "Unit Type", "Unit Price", "Subtotal")
+
         treeview_style = ttk.Style(product_selection_frame)
         treeview_style.configure("Treeview",
                                  font=("Segoe UI", 12),
@@ -52,7 +52,7 @@ class NewPurchase(tk.Frame):
 
         self.menu = tk.Menu(product_selection_frame, tearoff=0)
         self.menu.add_command(label="Delete", command=self.delete_item)
-
+        columns = ("Code", "Product Name", "Quantity", "Unit Type", "Unit Price", "Subtotal")
         self.product_entry_treeview = ttk.Treeview(product_selection_frame,
                                                    columns=columns,
                                                    show="headings",
@@ -232,7 +232,7 @@ class NewPurchase(tk.Frame):
                  bg="#2c3e50",
                  fg="white",
                  font=("Segoe UI", 12), ).grid(row=0, column=0, sticky=tk.NSEW)
-        self.supplier_name_entry = AutoCompleteEntryForSuppliers(supplier_details_frame, db_path="database.db",
+        self.supplier_name_entry = AutoCompleteEntryForSuppliers(supplier_details_frame, db_path="database/database.db",
                                                                  width=28, font=("Segoe UI", 12))
         self.supplier_name_entry.grid(row=1, column=0, sticky=tk.EW)
 
@@ -314,7 +314,7 @@ class NewPurchase(tk.Frame):
         entry.bind("<FocusOut>", lambda e: save_edit())
 
     def add_item(self):
-        product_code = self.product_name_entry.get().split("-")[0].strip()
+        product_code = self.product_name_search_entry.get().split("-")[0].strip()
         quantity = int(self.quantity.get())
 
         product = self.dbmanager.get_product_by_code(product_code)
@@ -330,7 +330,7 @@ class NewPurchase(tk.Frame):
         except tk.TclError:
             messagebox.showinfo("Duplicate Found", f"{product.name} already taken!")
         self.update_calculation()
-        self.product_name_entry.delete(0, tk.END)
+        self.product_name_search_entry.delete(0, tk.END)
 
     def update_calculation(self):
         # Update Total Items
@@ -527,7 +527,7 @@ class PurchasesFrame(tk.Frame):
                                      anchor=tk.E, )
         self.option_label.grid(row=2, column=0, pady=(0, 10), padx=(7, 0), sticky=tk.E)
 
-        self.supplier_name_entry = AutoCompleteEntryForSuppliers(custom_search,db_path="database.db", width=20, font=("Segoe UI", 10), )
+        self.supplier_name_entry = AutoCompleteEntryForSuppliers(custom_search, db_path="database/database.db", width=20, font=("Segoe UI", 10), )
         self.supplier_name_entry.grid(row=2, column=1, columnspan=2, pady=(0, 10), sticky=tk.EW)
         self.date_entry = DateEntry(
             custom_search,

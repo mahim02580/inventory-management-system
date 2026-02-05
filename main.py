@@ -1,17 +1,18 @@
 import tkinter as tk
 from tkinter import ttk
-from dashboard import DashboardFrame
-from product_management import ProductsFrame
-from sales_management import SalesFrame
-from customer_management import CustomersFrame
-from purchases_management import NewPurchase, PurchasesFrame
-import database_management as db
+from ui.dashboard import DashboardFrame
+from ui.product_management import ProductsFrame
+from ui.sales_management import NewSaleFrame, SalesFrame
+from ui.customer_management import CustomersFrame
+from ui.purchases_management import NewPurchase, PurchasesFrame
+from utils import database_management as db
 
-SHOP_NAME = 'SHOP_NAME'
+TITLE = "Sanitary & Tiles Shop Digital Hisab Khata and Stock Manager"
+
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title(SHOP_NAME)
+        self.title(TITLE)
         self.state('zoomed')
         # Allows custom styles
         style = ttk.Style(self)
@@ -52,42 +53,49 @@ class App(tk.Tk):
         ttk.Separator(self.sidebar_frame, orient="horizontal").grid(row=1, column=0, sticky=tk.EW)
 
         ttk.Button(self.sidebar_frame,
+                   text="New Sale",
+                   style="Sidebar.TButton",
+                   command=lambda: self.show_frame("new_sale")).grid(row=2, column=0, sticky=tk.EW)
+        ttk.Separator(self.sidebar_frame, orient="horizontal").grid(row=3, column=0, sticky=tk.EW)
+
+        ttk.Button(self.sidebar_frame,
                    text="Sales",
                    style="Sidebar.TButton",
-                   command=lambda: self.show_frame("sales")).grid(row=2, column=0, sticky=tk.EW)
-        ttk.Separator(self.sidebar_frame, orient="horizontal").grid(row=3, column=0, sticky=tk.EW)
+                   command=lambda: self.show_frame("sales")).grid(row=4, column=0, sticky=tk.EW)
+        ttk.Separator(self.sidebar_frame, orient="horizontal").grid(row=5, column=0, sticky=tk.EW)
 
         ttk.Button(self.sidebar_frame,
                    text="New Purchase",
                    style="Sidebar.TButton",
-                   command=lambda: self.show_frame("new_purchase")).grid(row=4, column=0, sticky=tk.EW)
-        ttk.Separator(self.sidebar_frame, orient="horizontal").grid(row=5, column=0, sticky=tk.EW)
+                   command=lambda: self.show_frame("new_purchase")).grid(row=6, column=0, sticky=tk.EW)
+        ttk.Separator(self.sidebar_frame, orient="horizontal").grid(row=7, column=0, sticky=tk.EW)
 
         ttk.Button(self.sidebar_frame,
                    text="Purchases",
                    style="Sidebar.TButton",
-                   command=lambda: self.show_frame("purchases")).grid(row=6, column=0, sticky=tk.EW)
-        ttk.Separator(self.sidebar_frame, orient="horizontal").grid(row=7, column=0, sticky=tk.EW)
+                   command=lambda: self.show_frame("purchases")).grid(row=8, column=0, sticky=tk.EW)
+        ttk.Separator(self.sidebar_frame, orient="horizontal").grid(row=9, column=0, sticky=tk.EW)
 
 
         ttk.Button(self.sidebar_frame,
                    text="Products",
                    style="Sidebar.TButton",
-                   command=lambda: self.show_frame("products")).grid(row=8, column=0, sticky=tk.EW)
-        ttk.Separator(self.sidebar_frame, orient="horizontal").grid(row=9, column=0, sticky=tk.EW)
+                   command=lambda: self.show_frame("products")).grid(row=10, column=0, sticky=tk.EW)
+        ttk.Separator(self.sidebar_frame, orient="horizontal").grid(row=11, column=0, sticky=tk.EW)
 
 
 
         ttk.Button(self.sidebar_frame,
                    text="Customers",
                    style="Sidebar.TButton",
-                   command=lambda: self.show_frame("customers")).grid(row=10, column=0, sticky=tk.EW)
-        ttk.Separator(self.sidebar_frame, orient="horizontal").grid(row=11, column=0, sticky=tk.EW)
+                   command=lambda: self.show_frame("customers")).grid(row=12, column=0, sticky=tk.EW)
+        ttk.Separator(self.sidebar_frame, orient="horizontal").grid(row=13, column=0, sticky=tk.EW)
 
         # Frames for content
         self.frames = {}
         for name, frame_class in {
             "dashboard": DashboardFrame,
+            "new_sale": NewSaleFrame,
             "sales": SalesFrame,
             "new_purchase": NewPurchase,
             "purchases": PurchasesFrame,
