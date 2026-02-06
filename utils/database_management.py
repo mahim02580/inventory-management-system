@@ -22,11 +22,6 @@ def get_product_by_code(code):
     return product
 
 
-def get_all_products_name():
-    """Gets all products name available in the products table"""
-    return session.execute(select(Product.name)).scalars().all()
-
-
 def get_all_products():
     products = session.execute(select(Product)).scalars().all()
     return products
@@ -51,7 +46,6 @@ def delete_product(product_id):
 
 def adjust_stock_of_product(product_id, quantity):
     product = session.get(Product, int(product_id))
-    print(product.stock, type(product.stock))
     product.stock -= quantity
     session.commit()
 

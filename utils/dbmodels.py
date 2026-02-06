@@ -11,18 +11,32 @@ class Base(DeclarativeBase):
 class Product(Base):
     __tablename__ = "products"
     code: Mapped[int] = mapped_column(primary_key=True)
+    category: Mapped[str] = mapped_column(nullable=False)
     name: Mapped[str] = mapped_column(nullable=False)
-    stock: Mapped[int] = mapped_column(nullable=False)
-    unit_type: Mapped[str] = mapped_column(nullable=False)
-    unit_price: Mapped[int] = mapped_column(nullable=False)
+    base_unit_type: Mapped[str] = mapped_column(nullable=False)
+    base_unit_price: Mapped[int] = mapped_column(nullable=False)
+    sell_unit_type: Mapped[str] = mapped_column(nullable=False)
+    sell_unit_price: Mapped[int] = mapped_column(nullable=False)
+    conversion_factor: Mapped[int] = mapped_column()
+    # pcs_per_box: Mapped[int] = mapped_column()
+    current_stock: Mapped[int] = mapped_column(nullable=False)
+    low_stock_alert: Mapped[int] = mapped_column(nullable=False)
+
+
 
 
 class Customer(Base):
     __tablename__ = "customers"
-    phone: Mapped[str] = mapped_column(primary_key=True, nullable=False)
+    phone: Mapped[str] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(nullable=False)
     address: Mapped[str] = mapped_column()
     purchases = relationship("Invoice", back_populates="customer")
+
+class Supplier(Base):
+    __tablename__ = "suppliers"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(nullable=False)
+    orders = relationship("Purchase", back_populates="supplier")
 
 
 class Purchase(Base):
@@ -30,7 +44,6 @@ class Purchase(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id"))
     supplier = relationship("Supplier", back_populates="orders")
-    items = relationship("PurchaseItem", back_populates="purchase")
     purchase_date: Mapped[date] = mapped_column(Date, default=lambda: datetime.today().date(), nullable=False)
     delivery_date: Mapped[date] = mapped_column(Date, nullable=False)
     total_payable: Mapped[int] = mapped_column(nullable=False)
@@ -38,19 +51,15 @@ class Purchase(Base):
     due: Mapped[int] = mapped_column(nullable=False)
     status: Mapped[str] = mapped_column(nullable=False)
 
-
-class Supplier(Base):
-    __tablename__ = "suppliers"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(nullable=False)
-    orders = relationship(Purchase, back_populates="supplier")
+    items = relationship("PurchaseItem", back_populates="purchase")
 
 
 class PurchaseItem(Base):
     __tablename__ = "purchase_items"
     id: Mapped[int] = mapped_column(primary_key=True)
-    purchase_id: Mapped[int] = mapped_column(ForeignKey("purchases.id"), nullable=False)
+    purchase_id: Mapped[int] = mapped_column(ForeignKey("purchases.id"))
     product_code: Mapped[int] = mapped_column(ForeignKey("products.code"))
+    product_category: Mapped[str] = mapped_column(nullable=False)
     product_name: Mapped[str] = mapped_column(nullable=False)
     quantity: Mapped[int] = mapped_column(nullable=False)
     unit_type: Mapped[str] = mapped_column(nullable=False)
@@ -67,7 +76,6 @@ class Invoice(Base):
                                        nullable=False)
     time: Mapped[time] = mapped_column(Time, default=lambda: datetime.today().time(),
                                        nullable=False)
-    items = relationship("SaleItem", back_populates="invoice")
     customer_id: Mapped[int] = mapped_column(ForeignKey(Customer.phone))
     customer = relationship("Customer", back_populates="purchases")
     mrp_total: Mapped[int] = mapped_column(nullable=False)
@@ -76,6 +84,8 @@ class Invoice(Base):
     paid: Mapped[int] = mapped_column(nullable=False)
     change: Mapped[int] = mapped_column("Change", nullable=False)
     due: Mapped[int] = mapped_column("Due", nullable=False)
+
+    items = relationship("SaleItem", back_populates="invoice")
 
 
 class SaleItem(Base):

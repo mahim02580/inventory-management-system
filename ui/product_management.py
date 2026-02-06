@@ -16,16 +16,17 @@ class ProductsFrame(tk.Frame):
         # Products Treeview Frame---------------------------------------------------------------------------------------------
         products_treeview_frame = tk.Frame(self)
         products_treeview_frame.grid(row=0, column=0, rowspan=2, sticky=tk.NSEW)
-        columns = ("Code", "Product Name", "Stock", "Unit Type", "Unit Price")
+        columns = ("Code", "Category", "Product Name", "Stock", "Unit Type", "Unit Price")
         self.product_list_treeview = ttk.Treeview(products_treeview_frame, columns=columns, show="headings", height=21)
         for col in columns:
             self.product_list_treeview.heading(col, text=col)
 
-        self.product_list_treeview.column("Code", width=115, stretch=False, anchor=tk.CENTER)
-        self.product_list_treeview.column("Product Name", width=419, stretch=False)
-        self.product_list_treeview.column("Stock", width=95, stretch=False)
-        self.product_list_treeview.column("Unit Type", width=95, stretch=False)
-        self.product_list_treeview.column("Unit Price", width=95, stretch=False)
+        self.product_list_treeview.column("Code", width=100, stretch=False, anchor=tk.CENTER)
+        self.product_list_treeview.column("Category", width=100, stretch=False)
+        self.product_list_treeview.column("Product Name", width=320, stretch=False)
+        self.product_list_treeview.column("Stock", width=100, stretch=False)
+        self.product_list_treeview.column("Unit Type", width=100, stretch=False)
+        self.product_list_treeview.column("Unit Price", width=100, stretch=False)
 
         self.product_list_treeview.grid(row=0, column=0)
         self.product_list_treeview.bind("<Button-3>", self.show_menu)
@@ -35,106 +36,135 @@ class ProductsFrame(tk.Frame):
         self.product_list_treeview.configure(yscrollcommand=scrollbar.set)
         self.product_list_treeview.tag_configure("evenrow", background="#f0f0f0")
         self.product_list_treeview.tag_configure("oddrow", background="#FFFFFF")
+        self.product_list_treeview.tag_configure("low_stock", background="#F9BFBF")
 
         self.product_list_treeview.bind("<Double-1>", self.edit_product)
         # Right Side Frame----------------------------------------------------------------------------------------------
-        right_side_frame = tk.Frame(self)
-        right_side_frame.grid(row=0, column=2, sticky=tk.NSEW)
-
-        ## Stock Entry
-        stock_entry_frame = tk.Frame(right_side_frame, highlightbackground="#2c3e50", highlightthickness=2)
-        stock_entry_frame.grid(row=0, column=0, padx=20, sticky=tk.N)
-
-        tk.Label(stock_entry_frame,
-                 text="Update New Stock",
-                 fg="white",
-                 bg="#2c3e50",
-                 width=19,
-                 font=("Segoe UI", 18), ).grid(row=0, column=0, pady=(0, 20), sticky=tk.NSEW)
-
-        tk.Label(stock_entry_frame,
-                 text="Select Product",
-                 fg="white",
-                 bg="#2c3e50",
-                 width=25,
-                 font=("Segoe UI", 12)).grid(row=1, column=0, padx=5, sticky=tk.NSEW)
-
-        self.product_to_update_stock_entry = AutoCompleteEntry(stock_entry_frame, db_path="../database/database.db", font=("Arial", 12))
-        self.product_to_update_stock_entry.grid(row=2, column=0, padx=5, pady=(0, 10), sticky=tk.NSEW)
-
-        tk.Label(stock_entry_frame,
-                 text="New Stock",
-                 fg="white",
-                 bg="#2c3e50",
-                 font=("Segoe UI", 12), ).grid(row=3, column=0, padx=5, sticky=tk.NSEW)
-        self.product_new_stock_entry = tk.Entry(stock_entry_frame, validate="key",
-                                                validatecommand=(self.register(helpers.is_digit), "%P"),
-                                                font=("Segoe UI", 12), )
-        self.product_new_stock_entry.grid(row=4, column=0, padx=5, pady=(0, 10), sticky=tk.EW)
-
-        ttk.Button(stock_entry_frame,
-                   text="Update",
-                   command=self.update_stock).grid(row=5, column=0, padx=5, pady=(0, 10), sticky=tk.NSEW)
-
-        ## New Product Entry
-        product_entry_frame = tk.Frame(right_side_frame, highlightbackground="#2c3e50", highlightthickness=2)
-        product_entry_frame.grid(row=1, column=0, padx=20, pady=20, sticky=tk.N)
+        product_entry_frame = tk.Frame(self, highlightbackground="#2c3e50", highlightthickness=2)
+        product_entry_frame.grid(row=0, column=1, padx=20, sticky=tk.N)
 
         tk.Label(product_entry_frame,
                  text="Add New Product",
                  fg="white",
                  bg="#2c3e50",
                  width=19,
-                 font=("Segoe UI", 18)).grid(row=0, column=0, pady=(0, 20), sticky=tk.NSEW)
+                 font=("Segoe UI", 18)).grid(row=0, column=0, columnspan=2,pady=(0, 20), sticky=tk.NSEW)
 
         tk.Label(product_entry_frame,
                  text="Product Code",
+                 fg="white",
                  bg="#2c3e50",
-                 width=25,
-                 fg="white", font=("Segoe UI", 12), ).grid(row=1, column=0, padx=5, sticky=tk.NSEW)
-        self.product_code_entry = tk.Entry(product_entry_frame, font=("Segoe UI", 12))
-        self.product_code_entry.grid(row=2, column=0, pady=(0, 10), padx=5, sticky=tk.EW)
+                 width=5,
+                 font=("Segoe UI", 12)).grid(row=1, column=0, padx=5, sticky=tk.NSEW)
+        self.product_code_entry = tk.Entry(product_entry_frame, width=5, font=("Segoe UI", 12), validate="key",
+                                              validatecommand=(self.register(helpers.is_digit), "%P"), )
+        self.product_code_entry.grid(row=2, column=0, padx=5, pady=(0, 10), sticky=tk.EW)
+
+        tk.Label(product_entry_frame,
+                 text="Category",
+                 bg="#2c3e50",
+                 width=5,
+                 fg="white", font=("Segoe UI", 12), ).grid(row=1, column=1, columnspan=2, padx=5, sticky=tk.NSEW)
+        self.product_category_combobox = ttk.Combobox(product_entry_frame, width=5, font=("Segoe UI", 11),
+                                                      values=("Sanitary", "Tiles", "Pipe", "Fittings", "Accessories"))
+        self.product_category_combobox.current(0)
+        self.product_category_combobox.grid(row=2, column=1, columnspan=2, pady=(0, 10), padx=5, sticky=tk.EW)
+
 
         tk.Label(product_entry_frame,
                  text="Product Name",
                  bg="#2c3e50",
                  width=25,
-                 fg="white", font=("Segoe UI", 12), ).grid(row=3, column=0, padx=5, sticky=tk.NSEW)
+                 fg="white", font=("Segoe UI", 12), ).grid(row=3, column=0, columnspan=2,padx=5, sticky=tk.NSEW)
         self.product_name_entry = tk.Entry(product_entry_frame, font=("Segoe UI", 12))
-        self.product_name_entry.grid(row=4, column=0, pady=(0, 10), padx=5, sticky=tk.EW)
+        self.product_name_entry.grid(row=4, column=0,columnspan=2, pady=(0, 10), padx=5, sticky=tk.EW)
+
 
         tk.Label(product_entry_frame,
-                 text="Product Stock",
+                 text="Base Unit Type",
+                 bg="#2c3e50",
+                 width=5,
+                 fg="white", font=("Segoe UI", 12), ).grid(row=5, column=0,padx=5, sticky=tk.NSEW)
+        product_units = ("PCS", "BOX", "SFT", "FEET", "MTR", "LTR", "KG")
+        self.product_base_unit_combobox = ttk.Combobox(product_entry_frame, width=5, font=("Segoe UI", 11), values=product_units)
+        self.product_base_unit_combobox.current(0)
+        self.product_base_unit_combobox.grid(row=6, column=0, pady=(0, 10), padx=5, sticky=tk.EW)
+
+        tk.Label(product_entry_frame,
+                 text="Base Unit Price",
                  fg="white",
                  bg="#2c3e50",
-                 font=("Segoe UI", 12)).grid(row=5, column=0, padx=5, sticky=tk.NSEW)
-        self.product_stock_entry = tk.Entry(product_entry_frame, font=("Segoe UI", 12), validate="key",
+                 width=5,
+                 font=("Segoe UI", 12)).grid(row=5, column=1, padx=5, sticky=tk.NSEW)
+        self.product_base_unit_price_entry = tk.Entry(product_entry_frame, width=5,font=("Segoe UI", 12), validate="key",
                                             validatecommand=(self.register(helpers.is_digit), "%P"), )
-        self.product_stock_entry.grid(row=6, column=0, padx=5, pady=(0, 10), sticky=tk.EW)
+        self.product_base_unit_price_entry.grid(row=6, column=1, padx=5, pady=(0, 10), sticky=tk.EW)
 
         tk.Label(product_entry_frame,
-                 text="Unit Type",
-                 fg="white",
+                 text="Sell Unit Type",
                  bg="#2c3e50",
-                 font=("Segoe UI", 12)).grid(row=7, column=0, padx=5, sticky=tk.NSEW)
-        self.product_unit_type_combobox = ttk.Combobox(product_entry_frame, values=("PCS", "SFT", "KG", "LTR"),
-                                                       font=("Segoe UI", 12))
-        self.product_unit_type_combobox.current(0)
-        self.product_unit_type_combobox.grid(row=8, column=0, padx=5, pady=(0, 10), sticky=tk.EW)
+                 width=5,
+                 fg="white", font=("Segoe UI", 12), ).grid(row=7, column=0, padx=5, sticky=tk.NSEW)
+
+        self.product_sell_unit_combobox = ttk.Combobox(product_entry_frame, width=5, font=("Segoe UI", 11),
+                                                    values=product_units)
+        self.product_sell_unit_combobox.current(0)
+        self.product_sell_unit_combobox.grid(row=8, column=0, pady=(0, 10), padx=5, sticky=tk.EW)
 
         tk.Label(product_entry_frame,
-                 text="Unit Price",
-                 bg="#2c3e50",
+                 text="Sell Unit Price",
                  fg="white",
+                 bg="#2c3e50",
+                 width=5,
+                 font=("Segoe UI", 12)).grid(row=7, column=1, padx=5, sticky=tk.NSEW)
+        self.product_sell_unit_price_entry = tk.Entry(product_entry_frame, width=5, font=("Segoe UI", 12), validate="key",
+                                                      validatecommand=(self.register(helpers.is_digit), "%P"), )
+        self.product_sell_unit_price_entry.grid(row=8, column=1, padx=5, pady=(0, 10), sticky=tk.EW)
+
+        tk.Label(product_entry_frame,
+                 text="Unit Conversion",
+                 fg="white",
+                 bg="#2c3e50",
+                 width=5,
                  font=("Segoe UI", 12)).grid(row=9, column=0, padx=5, sticky=tk.NSEW)
-        self.product_unit_price_entry = tk.Entry(product_entry_frame, validate="key",
-                                                 validatecommand=(self.register(helpers.is_digit), "%P"),
-                                                 font=("Segoe UI", 12), )
-        self.product_unit_price_entry.grid(row=10, column=0, pady=(0, 10), padx=5, sticky=tk.EW)
+        self.unit_conversion_entry = tk.Entry(product_entry_frame, width=5, font=("Segoe UI", 12), validate="key",
+                                              validatecommand=(self.register(helpers.is_digit), "%P"), )
+        self.unit_conversion_entry.grid(row=10, column=0, padx=5, pady=(0, 10), sticky=tk.EW)
+
+        tk.Label(product_entry_frame,
+                 text="PCS Per Box",
+                 fg="white",
+                 bg="#2c3e50",
+                 width=5,
+                 font=("Segoe UI", 12)).grid(row=9, column=1, padx=5, sticky=tk.NSEW)
+        self.pcs_per_box_entry = tk.Entry(product_entry_frame, width=5, font=("Segoe UI", 12), validate="key",
+                                          validatecommand=(self.register(helpers.is_digit), "%P"), )
+        self.pcs_per_box_entry.grid(row=10, column=1, padx=5, pady=(0, 10), sticky=tk.EW)
+
+        tk.Label(product_entry_frame,
+                 text="Current Stock",
+                 fg="white",
+                 bg="#2c3e50",
+                 width=5,
+                 font=("Segoe UI", 12)).grid(row=11, column=0, padx=5, sticky=tk.NSEW)
+        self.product_current_stock_entry = tk.Entry(product_entry_frame, width=5, font=("Segoe UI", 12), validate="key",
+                                                    validatecommand=(self.register(helpers.is_digit), "%P"), )
+        self.product_current_stock_entry.grid(row=12, column=0, padx=5, pady=(0, 10), sticky=tk.EW)
+
+        tk.Label(product_entry_frame,
+                 text="Low Stock Alert",
+                 fg="white",
+                 bg="#2c3e50",
+                 width=5,
+                 font=("Segoe UI", 12)).grid(row=11, column=1, padx=5, sticky=tk.NSEW)
+        self.product_low_stock_alert_entry = tk.Entry(product_entry_frame, width=5, font=("Segoe UI", 12), validate="key",
+                                                      validatecommand=(self.register(helpers.is_digit), "%P"), )
+        self.product_low_stock_alert_entry.grid(row=12, column=1, padx=5, pady=(0, 10), sticky=tk.EW)
+
 
         ttk.Button(product_entry_frame,
                    text="Add",
-                   command=self.add_product).grid(row=11, column=0, padx=5, pady=(0, 10), sticky=tk.NSEW)
+                   command=self.add_product).grid(row=13, column=0, columnspan=2, padx=5, pady=(0, 10), sticky=tk.NSEW)
         self.refresh()
 
     def edit_product(self, event):
@@ -202,40 +232,38 @@ class ProductsFrame(tk.Frame):
 
     def add_product(self):
         product_code = int(self.product_code_entry.get())
+        product_category = self.product_category_combobox.get()
         product_name = self.product_name_entry.get()
-        product_stock = self.product_stock_entry.get()
-        product_unit_type = self.product_unit_type_combobox.get()
-        product_unit_price = self.product_unit_price_entry.get()
-
-        if not all([product_code, product_name, product_stock, product_unit_type, product_unit_price]):
+        product_base_unit = self.product_base_unit_combobox.get()
+        product_base_unit_price = int(self.product_base_unit_price_entry.get())
+        product_sell_unit = self.product_sell_unit_combobox.get()
+        product_sell_unit_price = int(self.product_sell_unit_price_entry.get())
+        unit_conversion = int(self.unit_conversion_entry.get())
+        product_current_stock = int(self.product_current_stock_entry.get())
+        product_low_stock_alert = int(self.product_low_stock_alert_entry.get())
+        if not all([product_code, product_category, product_name, product_base_unit, product_base_unit_price, product_sell_unit, product_sell_unit_price, unit_conversion,  product_current_stock, product_low_stock_alert]):
             messagebox.showerror(
                 title="Missing Information",
-                message="Product Name, Unit Price, and Stock must all be filled in."
+                message="All fields must be filled in."
             )
             return
 
         product_to_add = self.dbmanager.Product(
             code=product_code,
+            category=product_category,
             name=product_name,
-            stock=product_stock,
-            unit_type=product_unit_type,
-            unit_price=product_unit_price,
+            base_unit_type = product_base_unit,
+            base_unit_price = product_base_unit_price,
+            sell_unit_type=product_sell_unit,
+            sell_unit_price=product_sell_unit_price,
+            conversion_factor=unit_conversion,
+            current_stock=product_current_stock,
+            low_stock_alert=product_low_stock_alert
+
         )
         self.dbmanager.add_product(product_to_add)
         self.refresh()
 
-    def update_stock(self):
-        product_id_to_update_stock = self.product_to_update_stock_entry.get().split("-")[0]
-        new_stock = self.product_new_stock_entry.get()
-        if not new_stock:
-            messagebox.showerror(
-                title="Missing Information",
-                message="New Stock must be filled in."
-            )
-            return
-
-        self.dbmanager.update_stock_of_product(product_id_to_update_stock, new_stock)
-        self.refresh()
 
     def refresh(self):
         # Clears Products Treeview
@@ -243,16 +271,21 @@ class ProductsFrame(tk.Frame):
 
         # Gets all products(updated)
         for i, product in enumerate(self.dbmanager.get_all_products()):
-            tag = "evenrow" if i % 2 == 0 else "oddrow"
+            tag = "low_stock" if product.current_stock <= product.low_stock_alert else "evenrow" if i % 2 == 0 else "oddrow"
             self.product_list_treeview.insert("", tk.END,
-                                              values=(product.code, product.name, product.stock, product.unit_type,
-                                                      product.unit_price), tags=tag)
+                                              values=(product.code, product.category, product.name, product.current_stock,
+                                                      product.base_unit_type, product.base_unit_price), tags=tag)
 
 
         # Clears all entries
-        self.product_to_update_stock_entry.delete(0, tk.END)
-        self.product_new_stock_entry.delete(0, tk.END)  # from Update New Stock
         self.product_code_entry.delete(0, tk.END)
+        self.product_category_combobox.current(0)
         self.product_name_entry.delete(0, tk.END)
-        self.product_unit_price_entry.delete(0, tk.END)
-        self.product_stock_entry.delete(0, tk.END)
+        self.product_base_unit_combobox.current(0)
+        self.product_base_unit_price_entry.delete(0, tk.END)
+        self.product_sell_unit_combobox.current(0)
+        self.product_sell_unit_price_entry.delete(0, tk.END)
+        self.unit_conversion_entry.delete(0, tk.END)
+        self.pcs_per_box_entry.delete(0, tk.END)
+        self.product_current_stock_entry.delete(0, tk.END)
+        self.product_low_stock_alert_entry.delete(0, tk.END)

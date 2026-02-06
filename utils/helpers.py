@@ -110,6 +110,7 @@ class AutoCompleteEntry(tk.Entry):
         self.bind("<Down>", self._move_down)
         self.bind("<Up>", self._move_up)
         self.bind("<Return>", self._select)
+        self.bind("<Button-1>", self._select)
         self.bind("<Escape>", lambda e: self._hide())
 
     # ---------------- CORE ----------------

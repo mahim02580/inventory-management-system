@@ -52,7 +52,7 @@ class NewPurchase(tk.Frame):
 
         self.menu = tk.Menu(product_selection_frame, tearoff=0)
         self.menu.add_command(label="Delete", command=self.delete_item)
-        columns = ("Code", "Product Name", "Quantity", "Unit Type", "Unit Price", "Subtotal")
+        columns = ("Code", "Category", "Product Name", "Quantity", "Unit Type", "Unit Price", "Subtotal")
         self.product_entry_treeview = ttk.Treeview(product_selection_frame,
                                                    columns=columns,
                                                    show="headings",
@@ -66,12 +66,13 @@ class NewPurchase(tk.Frame):
         for col in columns:
             self.product_entry_treeview.heading(col, text=col)
 
-        self.product_entry_treeview.column("Code", width=100, stretch=False, )
-        self.product_entry_treeview.column("Product Name", width=324, stretch=False, )
-        self.product_entry_treeview.column("Quantity", width=100, stretch=False, anchor=tk.CENTER)
-        self.product_entry_treeview.column("Unit Type", width=100, stretch=False, anchor=tk.CENTER)
-        self.product_entry_treeview.column("Unit Price", width=100, stretch=False, anchor=tk.CENTER)
-        self.product_entry_treeview.column("Subtotal", width=100, stretch=False, anchor=tk.CENTER)
+        self.product_entry_treeview.column("Code", width=85, stretch=False, )
+        self.product_entry_treeview.column("Category", width=85, stretch=False, )
+        self.product_entry_treeview.column("Product Name", width=310, stretch=False, )
+        self.product_entry_treeview.column("Quantity", width=85, stretch=False, anchor=tk.CENTER)
+        self.product_entry_treeview.column("Unit Type", width=85, stretch=False, anchor=tk.CENTER)
+        self.product_entry_treeview.column("Unit Price", width=85, stretch=False, anchor=tk.CENTER)
+        self.product_entry_treeview.column("Subtotal", width=85, stretch=False, anchor=tk.CENTER)
 
         self.product_entry_treeview.grid(row=1, column=0, columnspan=5, pady=20)
 
@@ -177,7 +178,7 @@ class NewPurchase(tk.Frame):
                  width=6,
                  fg="white").grid(row=5, column=2, sticky=tk.NSEW)
 
-        # Total Paid + Change + Due-------------------------------------------------------------------------------------
+        # Total Paid + Due-------------------------------------------------------------------------------------
 
         ## Total Paid
         ttk.Separator(purchase_invoice_frame, orient="horizontal").grid(row=7, column=0, columnspan=3, sticky=tk.EW)
@@ -287,7 +288,7 @@ class NewPurchase(tk.Frame):
         # Column index
         col_index = int(column.replace("#", "")) - 1
         # Return, if column is not Amount Column
-        if not col_index == 4:
+        if col_index == 0 or col_index == 1 or col_index == 2 or col_index == 4 or col_index== 6:
             return
 
         x, y, width, height = self.product_entry_treeview.bbox(row_id, column)
@@ -305,7 +306,7 @@ class NewPurchase(tk.Frame):
             new_val = entry.get()
             values = list(self.product_entry_treeview.item(row_id, "values"))
             values[col_index] = new_val
-            values[-1] = str(int(values[col_index]) * int(values[2]))
+            values[-1] = str(int(values[-4]) * int(values[-2]))
             self.product_entry_treeview.item(row_id, values=values)
             entry.destroy()
             self.update_calculation()
@@ -320,12 +321,13 @@ class NewPurchase(tk.Frame):
         product = self.dbmanager.get_product_by_code(product_code)
         if not product:
             messagebox.showerror("Not Found", "This product doesn't exist!")
+            return
 
-        subtotal = int(product.unit_price) * quantity
+        subtotal = int(product.base_unit_price) * quantity
         try:
             self.product_entry_treeview.insert("", tk.END, iid=product.code,
-                                               values=(product.code, product.name, quantity, product.unit_type,
-                                                       product.unit_price, subtotal),
+                                               values=(product.code, product.category, product.name, quantity, product.base_unit_type,
+                                                       product.base_unit_price, subtotal),
                                                tags="product_entry_row")
         except tk.TclError:
             messagebox.showinfo("Duplicate Found", f"{product.name} already taken!")
@@ -338,7 +340,7 @@ class NewPurchase(tk.Frame):
         self.total_items.set(total_items)
 
         # Update MRP Total
-        mrp_total_list = [int(self.product_entry_treeview.item(item, "values")[5]) for item in
+        mrp_total_list = [int(self.product_entry_treeview.item(item, "values")[-1]) for item in
                           self.product_entry_treeview.get_children()]
         mrp_total = sum(mrp_total_list)
         self.mrp_total.set(mrp_total)
@@ -394,10 +396,10 @@ class NewPurchase(tk.Frame):
 
     def make_purchase(self):
         if not self.product_entry_treeview.get_children():
-            messagebox.showerror(title="Error", message="Please add products to print invoice.")
+            messagebox.showerror(title="Error", message="Please add products to make purchase.")
             return
 
-        supplier_name = self.supplier_name_entry.get()
+        supplier_name = self.supplier_name_entry.get().replace(" ", "-")
 
         if supplier_name:
             supplier = self.dbmanager.get_supplier_by_name(supplier_name)
@@ -410,7 +412,7 @@ class NewPurchase(tk.Frame):
                 self.dbmanager.add_supplier(supplier)
 
         else:
-            messagebox.showerror("Error", "Please Provide a Valid Supplier Name")
+            messagebox.showerror("Error", "Please provide a supplier name")
             return
 
         # Taking Delivery Date for the Purchase
@@ -424,15 +426,16 @@ class NewPurchase(tk.Frame):
             paid=self.paid_amount_entry.get(),
             due=self.due.get(),
             delivery_date=date_obj,
-            status="Pending"
+            status="Pending" # Default Status
         )
         for row_id in self.product_entry_treeview.get_children():
-            code, product_name, quantity, unit_type, unit_price, subtotal = self.product_entry_treeview.item(row_id,
+            code, category, product_name, quantity, unit_type, unit_price, subtotal = self.product_entry_treeview.item(row_id,
                                                                                                              "values")
 
             # Male SaleItem for each product
             purchase_item = self.dbmanager.PurchaseItem(
                 product_code=code,
+                product_category=category,
                 product_name=product_name,
                 quantity=int(quantity),
                 unit_type=unit_type,
