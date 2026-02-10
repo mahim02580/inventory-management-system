@@ -9,6 +9,8 @@ class CustomersFrame(tk.Frame):
         super().__init__(parent)
         self.dbmanager = dbms
 
+
+
         columns = ("Customer Name", "Customer Phone", "Customer Address")
         self.customer_details_treeview = ttk.Treeview(self, columns=columns, show="headings", height=21)
         for col in columns:
@@ -18,6 +20,11 @@ class CustomersFrame(tk.Frame):
         self.customer_details_treeview.column("Customer Phone", width=150, stretch=False)
         self.customer_details_treeview.column("Customer Address", width=360, stretch=False)
         self.customer_details_treeview.grid(row=0, column=0, padx=(20, 0), pady=20)
+
+        # Menu Options for Treeview
+        self.menu = tk.Menu(self, tearoff=0)
+        self.menu.add_command(label="Refresh", command=self.refresh)
+        self.customer_details_treeview.bind("<Button-3>", self.show_menu)
 
         self.customer_details_treeview.tag_configure("evenrow", background="#f0f0f0")
         self.customer_details_treeview.tag_configure("oddrow", background="#FFFFFF")
@@ -101,3 +108,9 @@ class CustomersFrame(tk.Frame):
         self.customer_name_entry.delete(0, tk.END)
         self.customer_phone_entry.delete(0, tk.END)
         self.customer_address_entry.delete(0, tk.END)
+
+    def show_menu(self, event):
+        iid = self.customer_details_treeview.identify_row(event.y)
+        if iid:
+            self.customer_details_treeview.selection_set(iid)
+            self.menu.tk_popup(event.x_root, event.y_root)

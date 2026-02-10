@@ -92,10 +92,12 @@ class SaleItem(Base):
     __tablename__ = "sales"
     id: Mapped[int] = mapped_column(primary_key=True)
     invoice_id: Mapped[int] = mapped_column(ForeignKey("invoices.id"), nullable=False)
-    product_id: Mapped[int] = mapped_column(ForeignKey("products.code"))
+    product_code: Mapped[int] = mapped_column(ForeignKey("products.code"))
+    product_category: Mapped[str] = mapped_column(nullable=False)
     product_name: Mapped[str] = mapped_column(nullable=False)
-    unit_price: Mapped[int] = mapped_column(nullable=False)
     quantity: Mapped[int] = mapped_column(nullable=False)
+    unit_type: Mapped[str] = mapped_column(nullable=False)
+    unit_price: Mapped[int] = mapped_column(nullable=False)
     subtotal: Mapped[int] = mapped_column(nullable=False)
 
     invoice = relationship("Invoice", back_populates="items")
@@ -112,4 +114,12 @@ class Refund(Base):
     time: Mapped[time] = mapped_column(Time, default=lambda: datetime.today().time())
     # RELATION
     sale_item = relationship("SaleItem", back_populates="refunds")
+
+class Expense(Base):
+    __tablename__ = "expenses"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    date: Mapped[date] = mapped_column(Date, default=lambda: datetime.today().date())
+    time: Mapped[time] = mapped_column(Time, default=lambda: datetime.today().time())
+    purpose: Mapped[str] = mapped_column()
+    amount: Mapped[int] = mapped_column()
 

@@ -11,8 +11,7 @@ class ProductsFrame(tk.Frame):
         self.configure(padx=20, pady=20)
         self.dbmanager = dbmanager
 
-        self.menu = tk.Menu(self, tearoff=0)
-        self.menu.add_command(label="Delete", command=self.delete_item)
+
         # Products Treeview Frame---------------------------------------------------------------------------------------------
         products_treeview_frame = tk.Frame(self)
         products_treeview_frame.grid(row=0, column=0, rowspan=2, sticky=tk.NSEW)
@@ -29,6 +28,11 @@ class ProductsFrame(tk.Frame):
         self.product_list_treeview.column("Unit Price", width=100, stretch=False)
 
         self.product_list_treeview.grid(row=0, column=0)
+
+        # Menu Options for Treeview
+        self.menu = tk.Menu(self, tearoff=0)
+        self.menu.add_command(label="Refresh", command=self.refresh)
+        self.menu.add_command(label="Delete", command=self.delete_item)
         self.product_list_treeview.bind("<Button-3>", self.show_menu)
 
         scrollbar = ttk.Scrollbar(products_treeview_frame, orient=tk.VERTICAL, command=self.product_list_treeview.yview)

@@ -1,3 +1,4 @@
+import math
 from datetime import date, time, datetime
 from sqlalchemy import create_engine, select, ForeignKey, Date, Time
 from sqlalchemy.orm import DeclarativeBase, Session, Mapped, mapped_column, relationship
@@ -44,15 +45,16 @@ def delete_product(product_id):
     session.commit()
 
 
-def adjust_stock_of_product(product_id, quantity):
+def adjust_stock_of_product(product_id, quantity_in_sell_unit):
     product = session.get(Product, int(product_id))
-    product.stock -= quantity
+    quantity_in_base_unit = math.ceil(quantity_in_sell_unit / product.conversion_factor)
+    product.current_stock -= quantity_in_base_unit
     session.commit()
 
 
 def update_stock_of_product(product_id, new_stock):
     product = session.get(Product, int(product_id))
-    product.stock += int(new_stock)
+    product.current_stock += int(new_stock)
     session.commit()
 
 
@@ -154,4 +156,18 @@ def get_supplier_by_name(name):
 
 def add_supplier(supplier):
     session.add(supplier)
+    session.commit()
+
+# Expense Management
+def get_all_expenses():
+    all_expenses = session.execute(select(Expense)).scalars().all()
+    return all_expenses
+
+def get_today_expenses():
+    today = datetime.today().date()
+    today_expenses = session.execute(select(Expense).where(Expense.date == today)).scalars().all()
+    return today_expenses
+
+def add_new_expense(new_expense):
+    session.add(new_expense)
     session.commit()

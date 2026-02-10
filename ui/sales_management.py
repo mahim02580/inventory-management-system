@@ -1,8 +1,11 @@
 import datetime
+import math
 import re
 import tkinter as tk
 from tkinter.font import Font
 from tkinter import ttk, messagebox
+
+from pandas.core.tools.datetimes import should_cache
 from tkcalendar import DateEntry
 from utils import helpers
 
@@ -38,7 +41,6 @@ class NewSaleFrame(tk.Frame):
         ttk.Button(product_selection_frame, text="Add", command=self.add_item).grid(row=0, column=4)
 
         ## Lower Part
-        columns = ("Code", "Product Name", "Quantity", "Unit Type", "Unit Price", "Subtotal")
         treeview_style = ttk.Style(product_selection_frame)
         treeview_style.configure("Treeview",
                                  font=("Segoe UI", 12),
@@ -50,28 +52,31 @@ class NewSaleFrame(tk.Frame):
                                  foreground="black",
                                  font=("Segoe UI", 12, "bold"))
 
-        self.menu = tk.Menu(product_selection_frame, tearoff=0)
-        self.menu.add_command(label="Delete", command=self.delete_item)
 
+        columns = ("Code", "Category", "Product Name", "Quantity", "Unit Type", "Unit Price", "Subtotal")
         self.product_entry_treeview = ttk.Treeview(product_selection_frame,
                                                    columns=columns,
                                                    show="headings",
                                                    height=19,
                                                    style="Treeview")
-        self.product_entry_treeview.bind("<Double-1>", self.edit_unit_price)
-        self.product_entry_treeview.bind("<Button-3>", self.show_menu)
 
+        # Menu Options for Treeview
+        self.menu = tk.Menu(product_selection_frame, tearoff=0)
+        self.menu.add_command(label="Delete", command=self.delete_item)
+        self.product_entry_treeview.bind("<Button-3>", self.show_menu)
+        self.product_entry_treeview.bind("<Double-1>", self.edit_unit_price)
         self.product_entry_treeview.tag_configure("product_entry_row", background="#f0f0f0")
 
         for col in columns:
             self.product_entry_treeview.heading(col, text=col)
 
-        self.product_entry_treeview.column("Code", width=100, stretch=False, )
-        self.product_entry_treeview.column("Product Name", width=324, stretch=False, )
-        self.product_entry_treeview.column("Quantity", width=100, stretch=False, anchor=tk.CENTER)
-        self.product_entry_treeview.column("Unit Type", width=100, stretch=False, anchor=tk.CENTER)
-        self.product_entry_treeview.column("Unit Price", width=100, stretch=False, anchor=tk.CENTER)
-        self.product_entry_treeview.column("Subtotal", width=100, stretch=False, anchor=tk.CENTER)
+        self.product_entry_treeview.column("Code", width=85, stretch=False, )
+        self.product_entry_treeview.column("Category", width=85, stretch=False, )
+        self.product_entry_treeview.column("Product Name", width=310, stretch=False, )
+        self.product_entry_treeview.column("Quantity", width=85, stretch=False, anchor=tk.CENTER)
+        self.product_entry_treeview.column("Unit Type", width=85, stretch=False, anchor=tk.CENTER)
+        self.product_entry_treeview.column("Unit Price", width=85, stretch=False, anchor=tk.CENTER)
+        self.product_entry_treeview.column("Subtotal", width=85, stretch=False, anchor=tk.CENTER)
 
         self.product_entry_treeview.grid(row=1, column=0, columnspan=5, pady=20)
 
@@ -288,8 +293,8 @@ class NewSaleFrame(tk.Frame):
         self.customer_address_entry.grid(row=5, column=0, columnspan=3, sticky=tk.EW)
 
         ttk.Button(customer_details_frame,
-                   text="PRINT",
-                   command=self.print_invoice).grid(row=6, column=0, columnspan=3, pady=(32, 0), sticky=tk.EW)
+                   text="Make Sale",
+                   command=self.make_sale).grid(row=6, column=0, columnspan=3, pady=(32, 0), sticky=tk.EW)
 
         self.refresh()
 
@@ -322,7 +327,7 @@ class NewSaleFrame(tk.Frame):
         # Column index
         col_index = int(column.replace("#", "")) - 1
         # Return, if column is not Amount Column
-        if col_index == 0 or col_index == 1 or col_index == 3  or col_index == 5:
+        if col_index == 0 or col_index == 1 or col_index == 2  or col_index == 4 or col_index == 6:
             return
 
         x, y, width, height = self.product_entry_treeview.bbox(row_id, column)
@@ -340,7 +345,7 @@ class NewSaleFrame(tk.Frame):
             new_val = entry.get()
             values = list(self.product_entry_treeview.item(row_id, "values"))
             values[col_index] = new_val
-            values[-1] = str(int(values[2]) * int(values[4]))
+            values[-1] = str(int(values[3]) * int(values[5]))
             self.product_entry_treeview.item(row_id, values=values)
             entry.destroy()
             self.update_calculation()
@@ -350,22 +355,24 @@ class NewSaleFrame(tk.Frame):
 
     def add_item(self):
         product_code = self.product_name_search_entry.get().split("-")[0].strip()
-        quantity = int(self.quantity.get())
 
         product = self.dbmanager.get_product_by_code(product_code)
         if not product:
             messagebox.showerror("Not Found", "This product doesn't exist!")
 
-        subtotal = int(product.unit_price) * quantity
+        quantity = math.ceil(int(self.quantity.get()) / product.conversion_factor) * product.conversion_factor
+        subtotal = int(product.sell_unit_price) * quantity
         try:
             self.product_entry_treeview.insert("", tk.END, iid=product.code,
-                                               values=(product.code, product.name, quantity, product.unit_type,
-                                                       product.unit_price, subtotal),
+                                               values=(product.code, product.category, product.name, quantity, product.sell_unit_type,
+                                                       product.sell_unit_price, subtotal),
                                                tags="product_entry_row")
         except tk.TclError:
             messagebox.showinfo("Duplicate Found", f"{product.name} already taken!")
         self.update_calculation()
         self.product_name_search_entry.delete(0, tk.END)
+        self.quantity.delete(0, tk.END)
+        self.quantity.insert(tk.END, "1")
 
     def update_calculation(self):
         # Update Total Items
@@ -420,6 +427,8 @@ class NewSaleFrame(tk.Frame):
         # Clears all entries
         self.discount_entry.delete(0, tk.END)
         self.discount_entry.insert(0, "0")
+        self.paid_entry.delete(0, tk.END)
+        self.paid_entry.insert(0, "0")
         self.customer_phone_entry.config(bg="white")
         self.customer_phone_entry.delete(0, tk.END)
         self.customer_name_entry.delete(0, tk.END)
@@ -447,10 +456,11 @@ class NewSaleFrame(tk.Frame):
                 self.customer_name_entry.delete(0, tk.END)
                 self.customer_address_entry.delete("1.0", tk.END)
 
-    def print_invoice(self):
+    def make_sale(self):
         if not self.product_entry_treeview.get_children():
             messagebox.showerror(title="Error", message="Please add products to print invoice.")
             return
+
         current_customer_phone = self.customer_phone_entry.get()
         if current_customer_phone:
             current_customer = self.dbmanager.get_customer_by_phone(current_customer_phone)
@@ -466,9 +476,9 @@ class NewSaleFrame(tk.Frame):
         else:
             current_customer = self.dbmanager.get_customer_by_phone("01700000000")
 
-        # Make Invoice
-        # Add products to invoice
-        invoice = self.dbmanager.Invoice(
+
+        # Make Sale
+        sale = self.dbmanager.Invoice(
             customer_id=current_customer.phone,
             mrp_total=self.mrp_total.get(),
             discount=self.discount_entry.get(),
@@ -477,26 +487,31 @@ class NewSaleFrame(tk.Frame):
             change=self.change.get(),
             due=self.due.get(),
         )
+
+        # Add products to Sale
         for row_id in self.product_entry_treeview.get_children():
-            code, product_name, quantity, unit_type, unit_price, subtotal = self.product_entry_treeview.item(row_id, "values")
+            code, category, product_name, quantity, unit_type, unit_price, subtotal = self.product_entry_treeview.item(row_id, "values")
 
             # Male SaleItem for each product
             saleitem = self.dbmanager.SaleItem(
-                product_id=int(code),
+                product_code=int(code),
+                product_category=category,
                 product_name=product_name,
                 quantity=int(quantity),
+                unit_type=unit_type,
                 unit_price=int(unit_price),
                 subtotal=int(subtotal),
             )
             # Add SaleItem to invoice
-            invoice.items.append(saleitem)
+            sale.items.append(saleitem)
             # Adjust stock while looping over through the TreeView
-            self.dbmanager.adjust_stock_of_product(saleitem.product_id, saleitem.quantity)
+            self.dbmanager.adjust_stock_of_product(saleitem.product_code, saleitem.quantity)
 
-        self.dbmanager.add_purchase(invoice)
-        print_invoice = messagebox.askyesno(title="Invoice Print", message="Do you want to print invoice?")
-        if print_invoice:
-            ready_invoice = helpers.make_invoice_for_purchase(invoice)
+        self.dbmanager.add_purchase(sale)
+
+        should_print_invoice = messagebox.askyesno(title="Invoice Print", message="Do you want to print invoice?")
+        if should_print_invoice:
+            ready_invoice = helpers.make_invoice_for_purchase(sale)
             helpers.print_out_invoice(ready_invoice)
         self.refresh()
 
@@ -517,7 +532,7 @@ class RefundFrame:
             row=0, column=2, padx=20)
         tk.Label(product_selection_frame, text=f"Customer: {invoice.customer.name}-{invoice.customer.phone}",
                  font=("Arial", 15), ).grid(row=0, column=3)
-        columns = ("PID", "Product Name", "Unit Price", "Sold Qty", "Returned Qty(P)", "Returned Qty(N)", "Refund")
+        columns = ("Code", "Product Name", "Sold Qty","Unit Type", "Unit Price",  "Returned Qty(P)", "Returned Qty(N)", "Refund")
         product_entry_treeview_style = ttk.Style(product_selection_frame)
         product_entry_treeview_style.configure("Treeview",
                                                    font=("Segoe UI", 12),
@@ -536,17 +551,19 @@ class RefundFrame:
                                                    height=10,
                                                    style="Treeview")
         self.product_entry_treeview.bind("<Double-1>", self.edit_cell)
-        self.product_entry_treeview.tag_configure("product_entry_row", background="#f0f0f0")
+        self.product_entry_treeview.tag_configure("evenrow", background="#f0f0f0")
+        self.product_entry_treeview.tag_configure("oddrow", background="#FFFFFF")
 
         for col in columns:
             self.product_entry_treeview.heading(col, text=col)
-        self.product_entry_treeview.column("PID", width=60, stretch=False, )
-        self.product_entry_treeview.column("Product Name", width=424, stretch=False, )
-        self.product_entry_treeview.column("Unit Price", width=90, stretch=False, )
-        self.product_entry_treeview.column("Sold Qty", width=80, stretch=False, )
+        self.product_entry_treeview.column("Code", width=85, stretch=False, )
+        self.product_entry_treeview.column("Product Name", width=320, stretch=False, )
+        self.product_entry_treeview.column("Sold Qty", width=85, stretch=False, )
+        self.product_entry_treeview.column("Unit Type", width=85, stretch=False, )
+        self.product_entry_treeview.column("Unit Price", width=85, stretch=False, )
         self.product_entry_treeview.column("Returned Qty(P)", width=140, stretch=False, )
         self.product_entry_treeview.column("Returned Qty(N)", width=140, stretch=False, )
-        self.product_entry_treeview.column("Refund", width=90, stretch=False, )
+        self.product_entry_treeview.column("Refund", width=85, stretch=False, )
 
         self.product_entry_treeview.grid(row=1, column=0, columnspan=5, pady=20)
 
@@ -570,12 +587,12 @@ class RefundFrame:
         self.load_products()
 
     def load_products(self):
-        for item in self.invoice.items:
+        for i, item in enumerate(self.invoice.items):
+            tag = "evenrow" if i % 2 == 0 else "oddrow"
             previous_returns = sum([refund.refund_quantity for refund in item.refunds])
             self.product_entry_treeview.insert("", tk.END, iid=item.id,
-                                               values=(item.product_id, item.product_name, item.unit_price,
-                                                       item.quantity, previous_returns, 0, 0), tags="product_entry_row")
-            print(item.id)
+                                               values=(item.product_code, item.product_name,item.quantity,item.unit_type,
+                                                       item.unit_price, previous_returns, 0, 0), tags=tag)
 
     def edit_cell(self, event):
         # Detect row and column
@@ -588,7 +605,7 @@ class RefundFrame:
         # Column index
         col_index = int(column.replace("#", "")) - 1
 
-        if not col_index == 5:
+        if not col_index == 6:
             return
 
         x, y, width, height = self.product_entry_treeview.bbox(row_id, column)
@@ -606,7 +623,7 @@ class RefundFrame:
             new_val = entry.get()
             values = list(self.product_entry_treeview.item(row_id, "values"))
 
-            available_product_to_return = int(values[3]) - int(values[4])
+            available_product_to_return = int(values[2]) - int(values[5])
             if int(new_val) > available_product_to_return:
                 messagebox.showwarning(title="Return Limit Exceeded",
                                      message="The return quantity cannot exceed the sold quantity.")
@@ -614,7 +631,7 @@ class RefundFrame:
             values[col_index] = new_val  # Implements Changes
 
             # Update return subtotal
-            values[-1] = str(int(values[2]) * int(values[col_index]))
+            values[-1] = str(int(values[4]) * int(values[col_index]))
             # Update Product in the TreeView
             self.product_entry_treeview.item(row_id, values=values)
 
@@ -635,8 +652,8 @@ class RefundFrame:
             values = self.product_entry_treeview.item(row_id, "values")
 
             # Update product stock in the database
-            product_name, refund_quantity = values[1], values[5]
-            self.dbmanager.update_stock_of_product(product_name, refund_quantity)
+            product_code, refund_quantity = values[0], values[-2]
+            self.dbmanager.update_stock_of_product(product_code, refund_quantity)
 
             # Add refund history to the SaleItem
             saleitem = self.dbmanager.get_saleitem(row_id)
@@ -749,6 +766,7 @@ class SalesFrame(tk.Frame):
         self.sales_treeview_frame.grid(row=1, column=0, sticky=tk.N)
 
         self.menu = tk.Menu(self, tearoff=0)
+        self.menu.add_command(label="Refresh", command=self.refresh)
         self.menu.add_command(label="Receive Payment", command=self.receive_payment)
         self.menu.add_command(label="Sales Return", command=self.sales_return)
 
@@ -813,6 +831,7 @@ class SalesFrame(tk.Frame):
         self.show_invoice(due_invoices)
 
     def custom_search(self):
+        self.sales_treeview.delete(*self.sales_treeview.get_children())
         self.enable_search_mechanism()
 
     def enable_search_mechanism(self):
@@ -915,7 +934,7 @@ class SalesFrame(tk.Frame):
                 invoice.due -= received_amount
                 self.dbmanager.update_changes()
                 payment_win.destroy()
-                self.all_radio_button.invoke()
+                self.refresh()
 
             payment_win = tk.Toplevel(self.sales_treeview_frame)
             payment_win.title("Receive Payment")
@@ -1012,3 +1031,14 @@ class SalesFrame(tk.Frame):
     def show_custom_date_search(self):
         self.invoice_or_phone_entry.grid_remove()
         self.date_entry.grid()
+
+    def refresh(self):
+        filter_option = self.filter_var.get()
+        if filter_option == "all":
+            self.all_radio_button.invoke()
+        elif filter_option == "today":
+            self.today_radio_button.invoke()
+        elif filter_option == "due":
+            self.due_radio_button.invoke()
+        elif filter_option == "custom_search":
+            self.search_button.invoke()
