@@ -45,10 +45,9 @@ def delete_product(product_id):
     session.commit()
 
 
-def adjust_stock_of_product(product_id, quantity_in_sell_unit):
+def adjust_stock_of_product(product_id, quantity):
     product = session.get(Product, int(product_id))
-    quantity_in_base_unit = math.ceil(quantity_in_sell_unit / product.conversion_factor)
-    product.current_stock -= quantity_in_base_unit
+    product.current_stock -= quantity
     session.commit()
 
 

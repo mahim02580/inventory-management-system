@@ -6,6 +6,7 @@ from tkinter.font import Font
 from tkinter import ttk, messagebox
 
 from pandas.core.tools.datetimes import should_cache
+from sqlalchemy.testing.plugin.plugin_base import final_process_cleanup
 from tkcalendar import DateEntry
 from utils import helpers
 
@@ -53,7 +54,7 @@ class NewSaleFrame(tk.Frame):
                                  font=("Segoe UI", 12, "bold"))
 
 
-        columns = ("Code", "Category", "Product Name", "Quantity", "Unit Type", "Unit Price", "Subtotal")
+        columns = ("Code", "Category", "Product Name", "Qty", "Unit", "Base Qty", "Rate", "Subtotal")
         self.product_entry_treeview = ttk.Treeview(product_selection_frame,
                                                    columns=columns,
                                                    show="headings",
@@ -71,11 +72,12 @@ class NewSaleFrame(tk.Frame):
             self.product_entry_treeview.heading(col, text=col)
 
         self.product_entry_treeview.column("Code", width=85, stretch=False, )
-        self.product_entry_treeview.column("Category", width=85, stretch=False, )
-        self.product_entry_treeview.column("Product Name", width=310, stretch=False, )
-        self.product_entry_treeview.column("Quantity", width=85, stretch=False, anchor=tk.CENTER)
-        self.product_entry_treeview.column("Unit Type", width=85, stretch=False, anchor=tk.CENTER)
-        self.product_entry_treeview.column("Unit Price", width=85, stretch=False, anchor=tk.CENTER)
+        self.product_entry_treeview.column("Category", width=80, stretch=False, )
+        self.product_entry_treeview.column("Product Name", width=300, stretch=False, )
+        self.product_entry_treeview.column("Qty", width=70, stretch=False, anchor=tk.CENTER)
+        self.product_entry_treeview.column("Unit", width=50, stretch=False, anchor=tk.CENTER)
+        self.product_entry_treeview.column("Base Qty", width=85, stretch=False, anchor=tk.CENTER)
+        self.product_entry_treeview.column("Rate", width=60, stretch=False, anchor=tk.CENTER)
         self.product_entry_treeview.column("Subtotal", width=85, stretch=False, anchor=tk.CENTER)
 
         self.product_entry_treeview.grid(row=1, column=0, columnspan=5, pady=20)
@@ -360,12 +362,30 @@ class NewSaleFrame(tk.Frame):
         if not product:
             messagebox.showerror("Not Found", "This product doesn't exist!")
 
-        quantity = math.ceil(int(self.quantity.get()) / product.conversion_factor) * product.conversion_factor
-        subtotal = int(product.sell_unit_price) * quantity
+        if product.category == "Pipe":
+            final_quantity, base_qty = helpers.calculate_base_stock_for_pipe(product, int(self.quantity.get()))
+            subtotal = int(product.sell_unit_price) * final_quantity
+            values = (product.code, product.category, product.name,final_quantity,product.sell_unit_type, base_qty,
+                      product.sell_unit_price, subtotal)
+        elif product.category == "Tiles":
+            final_quantity, base_stock = helpers.calculate_base_stock_for_tiles(product, int(self.quantity.get()))
+            subtotal = int(product.sell_unit_price) * final_quantity
+            values = (product.code, product.category, product.name,
+                      final_quantity, product.sell_unit_type, base_stock,
+                      product.sell_unit_price, subtotal)
+        else:
+            quantity = int(self.quantity.get())
+            subtotal = product.sell_unit_price * quantity
+            values = (product.code, product.category, product.name,
+                      quantity, product.sell_unit_type, quantity,
+                      product.sell_unit_price, subtotal)
+
+
+
+
         try:
             self.product_entry_treeview.insert("", tk.END, iid=product.code,
-                                               values=(product.code, product.category, product.name, quantity, product.sell_unit_type,
-                                                       product.sell_unit_price, subtotal),
+                                               values=values,
                                                tags="product_entry_row")
         except tk.TclError:
             messagebox.showinfo("Duplicate Found", f"{product.name} already taken!")
@@ -490,7 +510,7 @@ class NewSaleFrame(tk.Frame):
 
         # Add products to Sale
         for row_id in self.product_entry_treeview.get_children():
-            code, category, product_name, quantity, unit_type, unit_price, subtotal = self.product_entry_treeview.item(row_id, "values")
+            code, category, product_name, quantity, unit_type, base_qty, unit_price, subtotal = self.product_entry_treeview.item(row_id, "values")
 
             # Male SaleItem for each product
             saleitem = self.dbmanager.SaleItem(
@@ -499,6 +519,7 @@ class NewSaleFrame(tk.Frame):
                 product_name=product_name,
                 quantity=int(quantity),
                 unit_type=unit_type,
+                base_qty=base_qty,
                 unit_price=int(unit_price),
                 subtotal=int(subtotal),
             )
@@ -795,7 +816,7 @@ class SalesFrame(tk.Frame):
         invoice_frame = tk.Frame(self)
         invoice_frame.grid(row=1, column=1, sticky=tk.NSEW)
 
-        self.invoice_text = tk.Text(invoice_frame, width=40, height=33, font=("Courier New", 8), bd=2, )
+        self.invoice_text = tk.Text(invoice_frame, width=55, height=55, font=("Courier New", 6), bd=2, )
         self.invoice_text.grid(row=0, column=0, padx=(20, 0))
         invoice_scrollbar = ttk.Scrollbar(invoice_frame, orient=tk.VERTICAL, command=self.invoice_text.yview)
         invoice_scrollbar.grid(row=0, column=1, sticky=tk.NS)

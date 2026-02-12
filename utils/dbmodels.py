@@ -13,14 +13,13 @@ class Product(Base):
     code: Mapped[int] = mapped_column(primary_key=True)
     category: Mapped[str] = mapped_column(nullable=False)
     name: Mapped[str] = mapped_column(nullable=False)
-    base_unit_type: Mapped[str] = mapped_column(nullable=False)
-    base_unit_price: Mapped[int] = mapped_column(nullable=False)
-    sell_unit_type: Mapped[str] = mapped_column(nullable=False)
-    sell_unit_price: Mapped[int] = mapped_column(nullable=False)
+    base_unit_type: Mapped[str] = mapped_column()
+    sell_unit_type: Mapped[str] = mapped_column()
+    sell_unit_price: Mapped[int] = mapped_column()
     conversion_factor: Mapped[int] = mapped_column()
-    # pcs_per_box: Mapped[int] = mapped_column()
-    current_stock: Mapped[int] = mapped_column(nullable=False)
-    low_stock_alert: Mapped[int] = mapped_column(nullable=False)
+    pcs_per_box: Mapped[int] = mapped_column()
+    current_stock: Mapped[int] = mapped_column()
+    low_stock_alert: Mapped[int] = mapped_column()
 
 
 
@@ -63,6 +62,7 @@ class PurchaseItem(Base):
     product_name: Mapped[str] = mapped_column(nullable=False)
     quantity: Mapped[int] = mapped_column(nullable=False)
     unit_type: Mapped[str] = mapped_column(nullable=False)
+    base_qty: Mapped[str] = mapped_column()
     unit_price: Mapped[int] = mapped_column(nullable=False)
     subtotal: Mapped[int] = mapped_column(nullable=False)
 
@@ -97,6 +97,7 @@ class SaleItem(Base):
     product_name: Mapped[str] = mapped_column(nullable=False)
     quantity: Mapped[int] = mapped_column(nullable=False)
     unit_type: Mapped[str] = mapped_column(nullable=False)
+    base_qty: Mapped[str] = mapped_column()
     unit_price: Mapped[int] = mapped_column(nullable=False)
     subtotal: Mapped[int] = mapped_column(nullable=False)
 

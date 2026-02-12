@@ -6,6 +6,17 @@ from utils.helpers import AutoCompleteEntry, AutoCompleteEntryForSuppliers
 from tkinter.font import Font
 from utils import helpers
 
+CODE_COL_INDEX = 0
+CATEGORY_COL_INDEX = 1
+PRODUCT_COL_INDEX = 2
+QTY_COL_INDEX = 3
+UNIT_COL_INDEX = 4
+BASE_QTY_COL_INDEX = 5
+RATE_COL_INDEX = 6
+SUBTOTAL_COL_INDEX = 7
+DUE_AMT_INDEX = 5
+DEFAULT_PURCHASE_STATUS = "Pending"
+
 
 class NewPurchase(tk.Frame):
     def __init__(self, parent, dbmanager):
@@ -22,7 +33,8 @@ class NewPurchase(tk.Frame):
         tk.Label(product_selection_frame, text="Select Product:", font=("Arial", 15), ).grid(row=0, column=0,
                                                                                              sticky=tk.W)
 
-        self.product_name_search_entry = AutoCompleteEntry(product_selection_frame, db_path="database/database.db", font=("Arial", 15),
+        self.product_name_search_entry = AutoCompleteEntry(product_selection_frame, db_path="database/database.db",
+                                                           font=("Arial", 15),
                                                            width=35)
         self.product_name_search_entry.grid(row=0, column=1, sticky=tk.EW)
 
@@ -50,28 +62,23 @@ class NewPurchase(tk.Frame):
                                  foreground="black",
                                  font=("Segoe UI", 12, "bold"))
 
-        self.menu = tk.Menu(product_selection_frame, tearoff=0)
-        self.menu.add_command(label="Delete", command=self.delete_item)
-        columns = ("Code", "Category", "Product Name", "Quantity", "Unit Type", "Unit Price", "Subtotal")
+        columns = ("Code", "Category", "Product Name", "Qty", "Unit", "Base Qty", "Rate", "Subtotal")
         self.product_entry_treeview = ttk.Treeview(product_selection_frame,
                                                    columns=columns,
                                                    show="headings",
                                                    height=19,
                                                    style="Treeview")
-        self.product_entry_treeview.bind("<Double-1>", self.edit_quantity_and_unit_price)
-        self.product_entry_treeview.bind("<Button-3>", self.show_menu)
-
-        self.product_entry_treeview.tag_configure("product_entry_row", background="#f0f0f0")
 
         for col in columns:
             self.product_entry_treeview.heading(col, text=col)
 
         self.product_entry_treeview.column("Code", width=85, stretch=False, )
-        self.product_entry_treeview.column("Category", width=85, stretch=False, )
-        self.product_entry_treeview.column("Product Name", width=310, stretch=False, )
-        self.product_entry_treeview.column("Quantity", width=85, stretch=False, anchor=tk.CENTER)
-        self.product_entry_treeview.column("Unit Type", width=85, stretch=False, anchor=tk.CENTER)
-        self.product_entry_treeview.column("Unit Price", width=85, stretch=False, anchor=tk.CENTER)
+        self.product_entry_treeview.column("Category", width=80, stretch=False, )
+        self.product_entry_treeview.column("Product Name", width=300, stretch=False, )
+        self.product_entry_treeview.column("Qty", width=70, stretch=False, anchor=tk.E)
+        self.product_entry_treeview.column("Unit", width=50, stretch=False)
+        self.product_entry_treeview.column("Base Qty", width=85, stretch=False, anchor=tk.CENTER)
+        self.product_entry_treeview.column("Rate", width=60, stretch=False, anchor=tk.CENTER)
         self.product_entry_treeview.column("Subtotal", width=85, stretch=False, anchor=tk.CENTER)
 
         self.product_entry_treeview.grid(row=1, column=0, columnspan=5, pady=20)
@@ -81,7 +88,14 @@ class NewPurchase(tk.Frame):
         scrollbar.grid(row=1, column=5, sticky=tk.NS, pady=20)
         self.product_entry_treeview.configure(yscrollcommand=scrollbar.set)
 
-        # Invoice Making Frame--------------------------------------------------------------------------------------------
+        # Menu ---------------------------------------------------------------------------------------------------------
+        self.menu = tk.Menu(product_selection_frame, tearoff=0)
+        self.menu.add_command(label="Delete", command=self.delete_item)
+        self.product_entry_treeview.bind("<Button-3>", self.show_menu)
+        self.product_entry_treeview.bind("<Double-1>", self.edit_quantity_and_unit_price)
+        self.product_entry_treeview.tag_configure("product_entry_row", background="#f0f0f0")
+
+        # Invoice Making Frame------------------------------------------------------------------------------------------
         purchase_invoice_frame = tk.Frame(self)
         purchase_invoice_frame.grid(row=0, column=1, sticky=tk.N, padx=(20, 0))
 
@@ -260,22 +274,51 @@ class NewPurchase(tk.Frame):
 
         self.refresh()
 
-    def delete_item(self, items=None):
-        selected = items or self.product_entry_treeview.selection()
-        if not selected:
+    # Main Methods -----------------------------------------------------------------------------------------------------
+    def add_item(self):
+        product_name_with_code = self.product_name_search_entry.get()
+
+        if not product_name_with_code:
+            messagebox.showerror("Not Selected", "Please select product to add!")
             return
 
-        for item in selected:
-            self.product_entry_treeview.delete(item)
+        product_code = product_name_with_code.split("-")[0].strip()
 
-        # Update calculation after deleting an item
+        product = self.dbmanager.get_product_by_code(product_code)
+        if not product:
+            messagebox.showerror("Not Found", "This product doesn't exist!")
+            return
+
+        quantity = int(self.quantity.get())
+        if product.category == "Tiles":
+            final_quantity, base_stock = helpers.calculate_base_stock_for_tiles(product, quantity)
+            subtotal = int(product.sell_unit_price) * final_quantity
+            values = (product.code, product.category, product.name,
+                      final_quantity, product.sell_unit_type, base_stock,
+                      product.sell_unit_price, subtotal)
+        elif product.category == "Pipe":
+            final_quantity, base_qty = helpers.calculate_base_stock_for_pipe(product, quantity)
+            subtotal = int(product.sell_unit_price) * final_quantity
+            values = (product.code, product.category, product.name, final_quantity, product.sell_unit_type, base_qty,
+                      product.sell_unit_price, subtotal)
+
+        else:
+            subtotal = product.sell_unit_price * quantity
+            values = (product.code, product.category, product.name,
+                      quantity, product.sell_unit_type, "N/A",
+                      product.sell_unit_price, subtotal)
+
+        try:
+            self.product_entry_treeview.insert("", tk.END, iid=product.code,
+                                               values=values,
+                                               tags="product_entry_row")
+        except tk.TclError:
+            messagebox.showinfo("Duplicate Found", f"{product.name} already taken!")
+
         self.update_calculation()
-
-    def show_menu(self, event):
-        iid = self.product_entry_treeview.identify_row(event.y)
-        if iid:
-            self.product_entry_treeview.selection_set(iid)
-            self.menu.tk_popup(event.x_root, event.y_root)
+        self.product_name_search_entry.delete(0, tk.END)
+        self.quantity.delete(0, tk.END)
+        self.quantity.insert(tk.END, "1")
 
     def edit_quantity_and_unit_price(self, event):
         # Detect row and column
@@ -287,9 +330,10 @@ class NewPurchase(tk.Frame):
 
         # Column index
         col_index = int(column.replace("#", "")) - 1
-        # Return, if column is not Amount Column
-        if col_index == 0 or col_index == 1 or col_index == 2 or col_index == 4 or col_index== 6:
-            return
+        # Return, if column is not Qty or Rate Column
+        if col_index != QTY_COL_INDEX:
+            if col_index != RATE_COL_INDEX:
+                return
 
         x, y, width, height = self.product_entry_treeview.bbox(row_id, column)
 
@@ -298,6 +342,10 @@ class NewPurchase(tk.Frame):
 
         # Overlay Entry widget
         entry = tk.Entry(self.product_entry_treeview, font=("Segoe UI", 12), justify=tk.CENTER)
+
+        if col_index == QTY_COL_INDEX:  # For Quantity Entry Only
+            entry.config(justify=tk.RIGHT)
+
         entry.place(x=x, y=y, width=width, height=height)
         entry.insert(0, value)
         entry.focus()
@@ -305,8 +353,21 @@ class NewPurchase(tk.Frame):
         def save_edit():
             new_val = entry.get()
             values = list(self.product_entry_treeview.item(row_id, "values"))
-            values[col_index] = new_val
-            values[-1] = str(int(values[-4]) * int(values[-2]))
+
+            if values[CATEGORY_COL_INDEX] == "Tiles" and col_index == QTY_COL_INDEX:
+                product = self.dbmanager.get_product_by_code(values[CODE_COL_INDEX])
+                final_quantity, base_qty = helpers.calculate_base_stock_for_tiles(product, new_val)
+                values[col_index], values[BASE_QTY_COL_INDEX] = final_quantity, base_qty
+
+
+            elif values[CATEGORY_COL_INDEX] == "Pipe" and col_index == QTY_COL_INDEX:
+                product = self.dbmanager.get_product_by_code(values[CODE_COL_INDEX])
+                final_quantity, base_qty = helpers.calculate_base_stock_for_pipe(product, new_val)
+                values[col_index], values[BASE_QTY_COL_INDEX] = final_quantity, base_qty
+            else:
+                values[col_index] = new_val
+
+            values[SUBTOTAL_COL_INDEX] = str(int(values[QTY_COL_INDEX]) * int(values[RATE_COL_INDEX]))
             self.product_entry_treeview.item(row_id, values=values)
             entry.destroy()
             self.update_calculation()
@@ -314,25 +375,89 @@ class NewPurchase(tk.Frame):
         entry.bind("<Return>", lambda e: save_edit())
         entry.bind("<FocusOut>", lambda e: save_edit())
 
-    def add_item(self):
-        product_code = self.product_name_search_entry.get().split("-")[0].strip()
-        quantity = int(self.quantity.get())
-
-        product = self.dbmanager.get_product_by_code(product_code)
-        if not product:
-            messagebox.showerror("Not Found", "This product doesn't exist!")
+    def delete_item(self, items=None):
+        selected = items or self.product_entry_treeview.selection()
+        if not selected:
             return
 
-        subtotal = int(product.base_unit_price) * quantity
-        try:
-            self.product_entry_treeview.insert("", tk.END, iid=product.code,
-                                               values=(product.code, product.category, product.name, quantity, product.base_unit_type,
-                                                       product.base_unit_price, subtotal),
-                                               tags="product_entry_row")
-        except tk.TclError:
-            messagebox.showinfo("Duplicate Found", f"{product.name} already taken!")
+        for item in selected:
+            self.product_entry_treeview.delete(item)
+
+        # Update calculation after deleting an item
         self.update_calculation()
-        self.product_name_search_entry.delete(0, tk.END)
+
+    def make_purchase(self):
+        if not self.product_entry_treeview.get_children():
+            messagebox.showerror(title="Error", message="Please add products to make purchase.")
+            return  # If no product selected
+
+        supplier_name = self.supplier_name_entry.get().replace(" ", "-")
+
+        if supplier_name:
+            supplier = self.dbmanager.get_supplier_by_name(supplier_name)
+            if not supplier:
+                # Make Supplier
+                supplier = self.dbmanager.Supplier(
+                    name=supplier_name,
+                )
+                # Add Supplier
+                self.dbmanager.add_supplier(supplier)
+
+        else:
+            messagebox.showerror("Error", "Please provide a supplier name")
+            return
+
+        # Taking Delivery Date for the Purchase
+        date = self.purchase_delivery_date_entry.get()
+        day, month, year = date.split("-")
+        date_obj = datetime.date(day=int(day), month=int(month), year=int(year))
+        # Make Purchase
+        purchase = self.dbmanager.Purchase(
+            supplier_id=supplier.id,
+            total_payable=self.total.get(),
+            paid=self.paid_amount_entry.get(),
+            due=self.due.get(),
+            delivery_date=date_obj,
+            status=DEFAULT_PURCHASE_STATUS  # Default Status -> Pending
+        )
+        for row_id in self.product_entry_treeview.get_children():
+            code, category, product_name, quantity, unit, base_qty, rate, subtotal = self.product_entry_treeview.item(
+                row_id,
+                "values")
+
+            # Male SaleItem for each product
+            purchase_item = self.dbmanager.PurchaseItem(
+                product_code=code,
+                product_category=category,
+                product_name=product_name,
+                quantity=int(quantity),
+                unit_type=unit,
+                base_qty=base_qty,
+                unit_price=int(rate),
+                subtotal=int(subtotal),
+            )
+            # Add PurchaseItem to Purchase
+            purchase.items.append(purchase_item)
+
+        self.dbmanager.add_purchase(purchase)
+        self.refresh()
+
+    # Helper Methods
+    def refresh(self):
+
+        # Deletes all item in the Product Entry Treeview
+        self.delete_item(self.product_entry_treeview.get_children())
+
+        # Clears all entries
+        self.discount_entry.delete(0, tk.END)
+        self.discount_entry.insert(0, "0")
+        self.paid_amount_entry.delete(0, tk.END)
+        self.paid_amount_entry.insert(0, "0")
+        self.supplier_name_entry.delete(0, tk.END)
+
+        # Set Quantity 1
+        self.quantity.delete(0, tk.END)
+        self.quantity.insert(0, "1")
 
     def update_calculation(self):
         # Update Total Items
@@ -378,75 +503,11 @@ class NewPurchase(tk.Frame):
             self.due.set(0)
         return True
 
-    def refresh(self):
-
-        # Deletes all item in the Product Entry Treeview
-        self.delete_item(self.product_entry_treeview.get_children())
-
-        # Clears all entries
-        self.discount_entry.delete(0, tk.END)
-        self.discount_entry.insert(0, "0")
-        self.paid_amount_entry.delete(0, tk.END)
-        self.paid_amount_entry.insert(0, "0")
-        self.supplier_name_entry.delete(0, tk.END)
-
-        # Set Quantity 1
-        self.quantity.delete(0, tk.END)
-        self.quantity.insert(0, "1")
-
-    def make_purchase(self):
-        if not self.product_entry_treeview.get_children():
-            messagebox.showerror(title="Error", message="Please add products to make purchase.")
-            return
-
-        supplier_name = self.supplier_name_entry.get().replace(" ", "-")
-
-        if supplier_name:
-            supplier = self.dbmanager.get_supplier_by_name(supplier_name)
-            if not supplier:
-                # Make Supplier
-                supplier = self.dbmanager.Supplier(
-                    name=supplier_name,
-                )
-                # Add Supplier
-                self.dbmanager.add_supplier(supplier)
-
-        else:
-            messagebox.showerror("Error", "Please provide a supplier name")
-            return
-
-        # Taking Delivery Date for the Purchase
-        date = self.purchase_delivery_date_entry.get()
-        day, month, year = date.split("-")
-        date_obj = datetime.date(day=int(day), month=int(month), year=int(year))
-        # Make Purchase
-        purchase = self.dbmanager.Purchase(
-            supplier_id=supplier.id,
-            total_payable=self.total.get(),
-            paid=self.paid_amount_entry.get(),
-            due=self.due.get(),
-            delivery_date=date_obj,
-            status="Pending" # Default Status
-        )
-        for row_id in self.product_entry_treeview.get_children():
-            code, category, product_name, quantity, unit_type, unit_price, subtotal = self.product_entry_treeview.item(row_id,
-                                                                                                             "values")
-
-            # Male SaleItem for each product
-            purchase_item = self.dbmanager.PurchaseItem(
-                product_code=code,
-                product_category=category,
-                product_name=product_name,
-                quantity=int(quantity),
-                unit_type=unit_type,
-                unit_price=int(unit_price),
-                subtotal=int(subtotal),
-            )
-            # Add PurchaseItem to Purchase
-            purchase.items.append(purchase_item)
-
-        self.dbmanager.add_purchase(purchase)
-        self.refresh()
+    def show_menu(self, event):
+        iid = self.product_entry_treeview.identify_row(event.y)
+        if iid:
+            self.product_entry_treeview.selection_set(iid)
+            self.menu.tk_popup(event.x_root, event.y_root)
 
 
 class PurchasesFrame(tk.Frame):
@@ -514,23 +575,29 @@ class PurchasesFrame(tk.Frame):
                                                       value="by_supplier", command=self.search_by_supplier,
                                                       indicatoron=False)
         self.by_supplier_radiobutton.grid(row=1, column=1, pady=10, sticky=tk.W)
-        self.by_purchase_date_radiobutton = tk.Radiobutton(custom_search, text="Purchase Date", fg="white", bg="#3498db",
+        self.by_purchase_date_radiobutton = tk.Radiobutton(custom_search, text="Purchase Date", fg="white",
+                                                           bg="#3498db",
                                                            activeforeground="white", width=12, font=("Segoe UI", 10),
                                                            activebackground="#1abc9c", selectcolor="#1abc9c",
                                                            variable=self.search_filter,
-                                                           value="by_purchase_date", command=self.search_by_purchase_date, indicatoron=False)
+                                                           value="by_purchase_date",
+                                                           command=self.search_by_purchase_date, indicatoron=False)
         self.by_purchase_date_radiobutton.grid(row=1, column=2, pady=10, sticky=tk.W)
-        self.by_delivery_date_radiobutton = tk.Radiobutton(custom_search, text="Delivery Date", fg="white", bg="#3498db",
+        self.by_delivery_date_radiobutton = tk.Radiobutton(custom_search, text="Delivery Date", fg="white",
+                                                           bg="#3498db",
                                                            activeforeground="white", width=12, font=("Segoe UI", 10),
                                                            activebackground="#1abc9c", selectcolor="#1abc9c",
                                                            variable=self.search_filter,
-                                                           value="by_delivery_date", command=self.search_by_date_range, indicatoron=False)
+                                                           value="by_delivery_date",
+                                                           command=self.search_by_delivery_date,
+                                                           indicatoron=False)
         self.by_delivery_date_radiobutton.grid(row=1, column=3, pady=10, padx=(0, 8), sticky=tk.W)
         self.option_label = tk.Label(custom_search, text="Supplier:", width=13, font=("Segoe UI", 10),
                                      anchor=tk.E, )
         self.option_label.grid(row=2, column=0, pady=(0, 10), padx=(7, 0), sticky=tk.E)
 
-        self.supplier_name_entry = AutoCompleteEntryForSuppliers(custom_search, db_path="database/database.db", width=20, font=("Segoe UI", 10), )
+        self.supplier_name_entry = AutoCompleteEntryForSuppliers(custom_search, db_path="database/database.db",
+                                                                 width=20, font=("Segoe UI", 10), )
         self.supplier_name_entry.grid(row=2, column=1, columnspan=2, pady=(0, 10), sticky=tk.EW)
         self.date_entry = DateEntry(
             custom_search,
@@ -583,12 +650,7 @@ class PurchasesFrame(tk.Frame):
 
         self.all_purchases_radio_button.invoke()
 
-    def show_menu(self, event):
-        iid = self.purchases_treeview.identify_row(event.y)
-        if iid:
-            self.purchases_treeview.selection_set(iid)
-            self.menu.tk_popup(event.x_root, event.y_root)
-
+    # Filter Option Methods---------------------------------------------------------------------------------------------
     def all_purchases(self):
         self.disable_search_mechanism()
         all_purchases = self.dbmanager.get_all_purchases()
@@ -604,24 +666,26 @@ class PurchasesFrame(tk.Frame):
         due_purchases = self.dbmanager.get_due_purchases()
         self.insert_purchases_to_treeview(due_purchases)
 
-    def insert_purchases_to_treeview(self, purchases):
+    def custom_search(self):
         self.purchases_treeview.delete(*self.purchases_treeview.get_children())
-        for i, purchase in enumerate(purchases):
-            tag = "evenrow" if i % 2 == 0 else "oddrow"
-            self.purchases_treeview.insert(
-                "",
-                tk.END,iid=purchase.id,
-                values=(purchase.supplier.name, purchase.purchase_date.strftime("%d-%m-%Y"),
-                        purchase.delivery_date.strftime("%d-%m-%Y"),
-                        purchase.total_payable, purchase.paid, purchase.due, purchase.status), tags=tag)
+        self.enable_search_mechanism()
 
     def get_purchases_by_search(self):
         filter_option = self.search_filter.get()
 
         if filter_option == "by_supplier":
             supplier_name = self.supplier_name_entry.get()
-            purchases = self.dbmanager.get_purchases_by_supplier_name(supplier_name)
+            supplier = self.dbmanager.get_supplier_by_name(supplier_name)
+
+            # Checks if supplier exists
+            if not supplier:
+                self.purchases_treeview.delete(*self.purchases_treeview.get_children())
+                messagebox.showerror(title="Supplier Not Found", message="No Supplier Name Found.")
+                return
+
+            purchases = self.dbmanager.get_purchases_by_supplier_name(supplier.name)
             if not purchases:
+                self.purchases_treeview.delete(*self.purchases_treeview.get_children())
                 messagebox.showerror(title="Not Found", message="No Purchase Found for This Supplier.")
                 return
             self.insert_purchases_to_treeview(purchases)
@@ -632,6 +696,7 @@ class PurchasesFrame(tk.Frame):
             delivery_date_obj = datetime.date(day=int(day), month=int(month), year=int(year))
             purchases = self.dbmanager.get_purchases_by_purchase_date(delivery_date_obj)
             if not purchases:
+                self.purchases_treeview.delete(*self.purchases_treeview.get_children())
                 messagebox.showerror(title="Not Found", message="No Purchases Found for This Purchase Date")
                 return
             self.insert_purchases_to_treeview(purchases)
@@ -642,10 +707,12 @@ class PurchasesFrame(tk.Frame):
             delivery_date_obj = datetime.date(day=int(day), month=int(month), year=int(year))
             purchases = self.dbmanager.get_purchases_by_delivery_date(delivery_date_obj)
             if not purchases:
+                self.purchases_treeview.delete(*self.purchases_treeview.get_children())
                 messagebox.showerror(title="Not Found", message="No Purchases Found for This Delivery Date.")
                 return
             self.insert_purchases_to_treeview(purchases)
 
+    # Filter Option Helper Methods--------------------------------------------------------------------------------------
     def search_by_supplier(self):
         self.option_label.config(text="Supplier:")
         self.show_search_bar_entry_for_suppliers()
@@ -654,9 +721,20 @@ class PurchasesFrame(tk.Frame):
         self.option_label.config(text="Purchase Date:")
         self.show_custom_date_search()
 
-    def search_by_date_range(self):
+    def search_by_delivery_date(self):
         self.option_label.config(text="Delivery Date:")
         self.show_custom_date_search()
+
+    def insert_purchases_to_treeview(self, purchases):
+        self.purchases_treeview.delete(*self.purchases_treeview.get_children())
+        for i, purchase in enumerate(purchases):
+            tag = "evenrow" if i % 2 == 0 else "oddrow"
+            self.purchases_treeview.insert(
+                "",
+                tk.END, iid=purchase.id,
+                values=(purchase.supplier.name, purchase.purchase_date.strftime("%d-%m-%Y"),
+                        purchase.delivery_date.strftime("%d-%m-%Y"),
+                        purchase.total_payable, purchase.paid, purchase.due, purchase.status), tags=tag)
 
     def show_search_bar_entry_for_suppliers(self):
         self.date_entry.grid_remove()
@@ -665,10 +743,6 @@ class PurchasesFrame(tk.Frame):
     def show_custom_date_search(self):
         self.supplier_name_entry.grid_remove()
         self.date_entry.grid()
-
-    def custom_search(self):
-        self.purchases_treeview.delete(*self.purchases_treeview.get_children())
-        self.enable_search_mechanism()
 
     def enable_search_mechanism(self):
         self.search_label.config(fg="white")
@@ -692,16 +766,18 @@ class PurchasesFrame(tk.Frame):
         self.search_button.config(state=tk.DISABLED)
         self.date_entry.config(state=tk.DISABLED)
 
+    # Menu item Methods-------------------------------------------------------------------------------------------------
     def view_purchases_items(self):
+        # UI
         purchased_products_toplevel = tk.Toplevel(self.purchases_treeview_frame)
         purchased_products_toplevel.resizable(False, False)
-        self.center_window(purchased_products_toplevel, 500, 885)
-        columns = ("Code", "Category", "Product Name", "Quantity", "Unit Type", "Unit Price", "Subtotal")
+        self.center_window(purchased_products_toplevel, 500, 875)
+        columns = ("Code", "Category", "Product Name", "Qty", "Unit", "Base Qty", "Rate", "Subtotal")
         purchased_products_list_treeview = ttk.Treeview(purchased_products_toplevel,
-                                                   columns=columns,
-                                                   show="headings",
-                                                   height=14,
-                                                   style="Treeview")
+                                                        columns=columns,
+                                                        show="headings",
+                                                        height=14,
+                                                        style="Treeview")
 
         purchased_products_list_treeview.tag_configure("evenrow", background="#f0f0f0")
         purchased_products_list_treeview.tag_configure("oddrow", background="#FFFFFF")
@@ -710,11 +786,12 @@ class PurchasesFrame(tk.Frame):
             purchased_products_list_treeview.heading(col, text=col)
 
         purchased_products_list_treeview.column("Code", width=85, stretch=False, )
-        purchased_products_list_treeview.column("Category", width=85, stretch=False, )
-        purchased_products_list_treeview.column("Product Name", width=310, stretch=False, )
-        purchased_products_list_treeview.column("Quantity", width=85, stretch=False, anchor=tk.CENTER)
-        purchased_products_list_treeview.column("Unit Type", width=85, stretch=False, anchor=tk.CENTER)
-        purchased_products_list_treeview.column("Unit Price", width=85, stretch=False, anchor=tk.CENTER)
+        purchased_products_list_treeview.column("Category", width=80, stretch=False, )
+        purchased_products_list_treeview.column("Product Name", width=300, stretch=False, )
+        purchased_products_list_treeview.column("Qty", width=70, stretch=False, anchor=tk.E)
+        purchased_products_list_treeview.column("Unit", width=50, stretch=False)
+        purchased_products_list_treeview.column("Base Qty", width=85, stretch=False, anchor=tk.CENTER)
+        purchased_products_list_treeview.column("Rate", width=60, stretch=False, anchor=tk.CENTER)
         purchased_products_list_treeview.column("Subtotal", width=85, stretch=False, anchor=tk.CENTER)
 
         purchased_products_list_treeview.grid(row=0, column=0, padx=(20, 0), pady=20)
@@ -728,24 +805,41 @@ class PurchasesFrame(tk.Frame):
         purchase = self.dbmanager.get_purchase_by_id(purchase_id)
         for i, purchase_item in enumerate(purchase.items):
             tag = "evenrow" if i % 2 == 0 else "oddrow"
-            purchased_products_list_treeview.insert("", tk.END, values=(purchase_item.product_code, purchase_item.product_category, purchase_item.product_name, purchase_item.quantity, purchase_item.unit_type, purchase_item.unit_price, purchase_item.subtotal), tags=tag)
+            purchased_products_list_treeview.insert("", tk.END,
+                                                    values=(purchase_item.product_code, purchase_item.product_category,
+                                                            purchase_item.product_name, purchase_item.quantity,
+                                                            purchase_item.unit_type, purchase_item.base_qty,
+                                                            purchase_item.unit_price,
+                                                            purchase_item.subtotal), tags=tag)
 
+    def order_received(self):
+        purchase_id = self.purchases_treeview.selection()[0]
+        purchase = self.dbmanager.get_purchase_by_id(purchase_id)
+        if not purchase.status == "Pending":
+            messagebox.showinfo(title="Already Received", message="This Order has been Received")
+            return
 
+        purchase.status = "Received"
+        for item in purchase.items:
+            self.dbmanager.update_stock_of_product(item.product_code, item.quantity)
+        messagebox.showinfo(title="Successful", message="Order Received Successfully!")
+        self.refresh()
 
     def pay_due_payment(self):
         selected_purchase_id = self.purchases_treeview.selection()[0]
-        selected_invoice = self.purchases_treeview.item(selected_purchase_id, "values")
-        due_amount = int(selected_invoice[-2])
+        selected_invoice_values = self.purchases_treeview.item(selected_purchase_id, "values")
+        due_amount = int(selected_invoice_values[DUE_AMT_INDEX])
 
-        if due_amount == 0:
+        if due_amount <= 0:
             messagebox.showinfo(title="No Due Payment", message="This invoice has no due payment.")
             return
         else:
             def update_purchase_with_due_payment():
                 received_amount = int(payment_received_entry.get())
                 if received_amount > purchase.due:
-                    messagebox.showinfo(message="Received amount is greater than due amount. Check and try again!")
+                    messagebox.showinfo(title="Amount Limit Exceeds", message="Received amount is greater than due amount. Check and try again!")
                     return
+
                 purchase.paid += received_amount
                 purchase.due -= received_amount
                 self.dbmanager.update_changes()
@@ -760,8 +854,6 @@ class PurchasesFrame(tk.Frame):
 
             purchase_id = selected_purchase_id
             purchase = self.dbmanager.get_purchase_by_id(purchase_id)
-
-
 
             # Total Payable
             tk.Label(due_pay_win, text=f"Total Payable", font=("Segoe UI", 12, "bold"),
@@ -788,34 +880,20 @@ class PurchasesFrame(tk.Frame):
                      anchor=tk.W, ).grid(row=3, column=2, sticky=tk.W)
 
             tk.Label(due_pay_win, text="Due Pay Amount", font=("Segoe UI", 12, "bold"), anchor=tk.W, ).grid(row=4,
-                                                                                                              column=0,
-                                                                                                              sticky=tk.W)
+                                                                                                            column=0,
+                                                                                                            sticky=tk.W)
             tk.Label(due_pay_win, text=":", font=("Segoe UI", 12, "bold"), anchor=tk.W, ).grid(row=4, column=1,
                                                                                                sticky=tk.W)
             payment_received_entry = tk.Entry(due_pay_win, width=6, font=("Segoe UI", 12))
             payment_received_entry.focus_set()
             payment_received_entry.grid(row=4, column=2)
             tk.Button(due_pay_win, text="Confirm", command=update_purchase_with_due_payment).grid(row=5, column=1,
-                                                                                                 columnspan=2,
-                                                                                                 pady=10,
-                                                                                                 sticky=tk.NSEW)
+                                                                                                  columnspan=2,
+                                                                                                  pady=10,
+                                                                                                  sticky=tk.NSEW)
             due_pay_win.transient()
             due_pay_win.grab_set()  # modal behavior
             due_pay_win.resizable(False, False)
-
-    def order_received(self):
-        purchase_id = self.purchases_treeview.selection()[0]
-        purchase = self.dbmanager.get_purchase_by_id(purchase_id)
-        if not purchase.status == "Pending":
-            messagebox.showinfo(title="Already Received", message="This Order has been Received")
-            return
-
-        purchase.status = "Received"
-        for item in purchase.items:
-            self.dbmanager.update_stock_of_product(item.product_code, item.quantity)
-        messagebox.showinfo(title="Successful", message="Order Received Successfully!")
-        self.refresh()
-
 
     def center_window(self, win, custom_height, custom_width):
         win.update_idletasks()
@@ -824,6 +902,12 @@ class PurchasesFrame(tk.Frame):
         x = (win.winfo_screenwidth() // 2) - (width // 2)
         y = (win.winfo_screenheight() // 2) - (height // 2)
         win.geometry(f"{width}x{height}+{x}+{y}")
+
+    def show_menu(self, event):
+        iid = self.purchases_treeview.identify_row(event.y)
+        if iid:
+            self.purchases_treeview.selection_set(iid)
+            self.menu.tk_popup(event.x_root, event.y_root)
 
     def refresh(self):
         filter_option = self.filter_var.get()
