@@ -59,7 +59,7 @@ def update_stock_of_product(product_id, new_stock):
 
 # Customer Management
 def get_customer_by_phone(customer_phone):
-    customer = session.get(Customer, customer_phone)
+    customer = session.execute(select(Customer).where(Customer.phone == customer_phone)).scalar()
     return customer
 
 
@@ -74,7 +74,7 @@ def get_all_customers():
 
 
 # Sales Management
-def add_purchase(purchase):
+def add_sale(purchase):
     session.add(purchase)
     session.commit()
 
@@ -110,6 +110,12 @@ def get_saleitem(sale_id):
 
 
 # Purchase Management
+
+def add_purchase(purchase):
+    session.add(purchase)
+    session.commit()
+
+
 def get_purchase_by_id(id_no):
     purchase = session.get(Purchase, int(id_no))
     return purchase
@@ -157,15 +163,23 @@ def add_supplier(supplier):
     session.add(supplier)
     session.commit()
 
+
 # Expense Management
 def get_all_expenses():
     all_expenses = session.execute(select(Expense)).scalars().all()
     return all_expenses
 
+
 def get_today_expenses():
     today = datetime.today().date()
     today_expenses = session.execute(select(Expense).where(Expense.date == today)).scalars().all()
     return today_expenses
+
+
+def get_expenses_by_date(date_obj):
+    expenses = session.execute(select(Expense).where(Expense.date == date_obj)).scalars().all()
+    return expenses
+
 
 def add_new_expense(new_expense):
     session.add(new_expense)

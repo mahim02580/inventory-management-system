@@ -6,6 +6,7 @@ from utils.helpers import AutoCompleteEntry, AutoCompleteEntryForSuppliers
 from tkinter.font import Font
 from utils import helpers
 
+# NewPurchase
 CODE_COL_INDEX = 0
 CATEGORY_COL_INDEX = 1
 PRODUCT_COL_INDEX = 2
@@ -14,6 +15,7 @@ UNIT_COL_INDEX = 4
 BASE_QTY_COL_INDEX = 5
 RATE_COL_INDEX = 6
 SUBTOTAL_COL_INDEX = 7
+# PurchasesFrame
 DUE_AMT_INDEX = 5
 DEFAULT_PURCHASE_STATUS = "Pending"
 
@@ -444,6 +446,10 @@ class NewPurchase(tk.Frame):
 
     # Helper Methods
     def refresh(self):
+        # Clear Search Entry + Set Quantity 1
+        self.product_name_search_entry.delete(0, tk.END)
+        self.quantity.delete(0, tk.END)
+        self.quantity.insert(0, "1")
 
         # Deletes all item in the Product Entry Treeview
         self.delete_item(self.product_entry_treeview.get_children())
@@ -454,10 +460,6 @@ class NewPurchase(tk.Frame):
         self.paid_amount_entry.delete(0, tk.END)
         self.paid_amount_entry.insert(0, "0")
         self.supplier_name_entry.delete(0, tk.END)
-
-        # Set Quantity 1
-        self.quantity.delete(0, tk.END)
-        self.quantity.insert(0, "1")
 
     def update_calculation(self):
         # Update Total Items
@@ -837,7 +839,8 @@ class PurchasesFrame(tk.Frame):
             def update_purchase_with_due_payment():
                 received_amount = int(payment_received_entry.get())
                 if received_amount > purchase.due:
-                    messagebox.showinfo(title="Amount Limit Exceeds", message="Received amount is greater than due amount. Check and try again!")
+                    messagebox.showinfo(title="Amount Limit Exceeds",
+                                        message="Received amount is greater than due amount. Check and try again!")
                     return
 
                 purchase.paid += received_amount

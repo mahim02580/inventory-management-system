@@ -78,7 +78,7 @@ class ProductsFrame(tk.Frame):
                  width=5,
                  fg="white", font=("Segoe UI", 12), ).grid(row=1, column=1, columnspan=2, padx=5, sticky=tk.NSEW)
         self.product_category_combobox = ttk.Combobox(product_entry_frame, width=5, font=("Segoe UI", 11),
-                                                      values=("Tiles", "Sanitary", "Pipe", "Fittings", "Accessories"))
+                                                      values=("Tiles", "Sanitary", "Pipe", "Fittings", "Door", "Bathware", "Water Tank", "Accessories"))
         self.product_category_combobox.current(0)
         self.product_category_combobox.grid(row=2, column=1, columnspan=2, pady=(0, 10), padx=5, sticky=tk.EW)
         self.product_category_combobox.bind("<<ComboboxSelected>>", self.check_category)
@@ -141,8 +141,7 @@ class ProductsFrame(tk.Frame):
                  bg="#2c3e50",
                  width=5,
                  font=("Segoe UI", 12)).grid(row=9, column=0, columnspan=2, padx=5, sticky=tk.NSEW)
-        self.unit_conversion_entry = tk.Entry(product_entry_frame, width=5, font=("Segoe UI", 12), validate="key",
-                                              validatecommand=(self.register(helpers.is_digit), "%P"), )
+        self.unit_conversion_entry = tk.Entry(product_entry_frame, width=5, font=("Segoe UI", 12))
         self.unit_conversion_entry.grid(row=10, column=0, columnspan=2, padx=5, pady=(0, 10), sticky=tk.EW)
 
         self.unit_conversion_entry.insert("end", "1")
@@ -152,8 +151,7 @@ class ProductsFrame(tk.Frame):
                  bg="#2c3e50",
                  width=5,
                  font=("Segoe UI", 12)).grid(row=11, column=0, padx=5, sticky=tk.NSEW)
-        self.product_current_stock_entry = tk.Entry(product_entry_frame, width=5, font=("Segoe UI", 12), validate="key",
-                                                    validatecommand=(self.register(helpers.is_digit), "%P"), )
+        self.product_current_stock_entry = tk.Entry(product_entry_frame, width=5, font=("Segoe UI", 12) )
         self.product_current_stock_entry.grid(row=12, column=0, padx=5, pady=(0, 10), sticky=tk.EW)
 
         tk.Label(product_entry_frame,
@@ -181,10 +179,10 @@ class ProductsFrame(tk.Frame):
         product_base_unit = self.product_base_unit_combobox.get()
         pcs_per_box = self.pcs_per_box_entry.get()  # only for tiles
         product_sell_unit = self.product_sell_unit_combobox.get()
-        product_sell_unit_price = int(self.product_sell_unit_price_entry.get())
-        unit_conversion = int(self.unit_conversion_entry.get())
-        product_current_stock = int(self.product_current_stock_entry.get())
-        product_low_stock_alert = int(self.product_low_stock_alert_entry.get())
+        product_sell_unit_price = float(self.product_sell_unit_price_entry.get())
+        unit_conversion = float(self.unit_conversion_entry.get())
+        product_current_stock = float(self.product_current_stock_entry.get())
+        product_low_stock_alert = float(self.product_low_stock_alert_entry.get())
 
         if not all([product_code, product_category, product_name, product_base_unit, product_sell_unit,
                     product_sell_unit_price, unit_conversion, product_current_stock, product_low_stock_alert]):

@@ -7,12 +7,14 @@ import win32ui
 from escpos.printer import Usb
 import textwrap
 
+from sqlalchemy.testing.util import round_decimal
+
 SHOP_NAME = "SHOP_NAME"
 SHOP_ADDRESS = "SHOP_ADDRESS"
 SHOP_PHONE = "Contact: SHOP_PHONE"
 INVOICE_WIDTH = 60
 
-def make_invoice_for_purchase(invoice):
+def make_invoice_for_sale(invoice):
     # ready_invoice = "=" * INVOICE_WIDTH + "\n"
     # ready_invoice += f"{SHOP_NAME.center(INVOICE_WIDTH)}\n"
     # ready_invoice += f"{SHOP_ADDRESS.center(INVOICE_WIDTH)}\n"
@@ -188,7 +190,7 @@ def print_out_invoice(invoice):
     win32print.ClosePrinter(hprinter)
 
 
-def validate_phonenumber(phone_number):
+def validate_phone_number(phone_number):
     if phone_number == "":
         return True
     return phone_number.isdigit() and len(phone_number) <= 11
@@ -372,8 +374,8 @@ def calculate_base_stock_for_tiles(tiles, sft_quantity):
     size = tiles.name.split(",")[0] # Taking Tiles size from product's name
     height, width = size.split("x") # Taking height and width from tiles
     sft_per_tiles = round(int(height) * int(width) / 144, 3) # Taking sft (Using round() for decimal rounding)
-    final_quantity = round(math.ceil(int(sft_quantity) / sft_per_tiles) * sft_per_tiles)
-    pcs_needed = final_quantity // sft_per_tiles
+    final_quantity = round(math.ceil(float(sft_quantity) / sft_per_tiles) * sft_per_tiles, 3)
+    pcs_needed = round(final_quantity / sft_per_tiles)
     box, pcs = divmod(pcs_needed, tiles.pcs_per_box)
     base_qty = f"{int(box)}B {int(pcs)}P"
     return final_quantity, base_qty

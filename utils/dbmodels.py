@@ -15,19 +15,20 @@ class Product(Base):
     name: Mapped[str] = mapped_column(nullable=False)
     base_unit_type: Mapped[str] = mapped_column()
     sell_unit_type: Mapped[str] = mapped_column()
-    sell_unit_price: Mapped[int] = mapped_column()
-    conversion_factor: Mapped[int] = mapped_column()
+    sell_unit_price: Mapped[float] = mapped_column()
+    conversion_factor: Mapped[float] = mapped_column()
     pcs_per_box: Mapped[int] = mapped_column()
-    current_stock: Mapped[int] = mapped_column()
-    low_stock_alert: Mapped[int] = mapped_column()
+    current_stock: Mapped[float] = mapped_column()
+    low_stock_alert: Mapped[float] = mapped_column()
 
 
 
 
 class Customer(Base):
     __tablename__ = "customers"
-    phone: Mapped[str] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(nullable=False)
+    phone: Mapped[str] = mapped_column(nullable=False)
     address: Mapped[str] = mapped_column()
     purchases = relationship("Invoice", back_populates="customer")
 
