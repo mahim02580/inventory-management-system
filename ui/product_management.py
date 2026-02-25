@@ -28,7 +28,7 @@ class ProductsFrame(tk.Frame):
             self.product_list_treeview.heading(col, text=col)
 
         self.product_list_treeview.column("Code", width=90, stretch=False, anchor=tk.CENTER)
-        self.product_list_treeview.column("Category", width=90, stretch=False)
+        self.product_list_treeview.column("Category", width=100, stretch=False)
         self.product_list_treeview.column("Product Name", width=320, stretch=False)
         self.product_list_treeview.column("Stock", width=90, stretch=False, anchor=tk.E)
         self.product_list_treeview.column("Unit", width=50, stretch=False)
@@ -68,8 +68,9 @@ class ProductsFrame(tk.Frame):
                  bg="#2c3e50",
                  width=5,
                  font=("Segoe UI", 12)).grid(row=1, column=0, padx=5, sticky=tk.NSEW)
-        self.product_code_entry = tk.Entry(product_entry_frame, width=5, font=("Segoe UI", 12), validate="key",
-                                           validatecommand=(self.register(helpers.is_digit), "%P"), )
+        self.product_code_entry = tk.Entry(product_entry_frame, width=5, font=("Segoe UI", 12), validate="key", validatecommand=(
+                                                 product_entry_frame.register(helpers.is_float),
+                                                 "%P",) )
         self.product_code_entry.grid(row=2, column=0, padx=5, pady=(0, 10), sticky=tk.EW)
 
         tk.Label(product_entry_frame,
@@ -131,8 +132,9 @@ class ProductsFrame(tk.Frame):
                  width=5,
                  font=("Segoe UI", 12)).grid(row=7, column=1, padx=5, sticky=tk.NSEW)
         self.product_sell_unit_price_entry = tk.Entry(product_entry_frame, width=5, font=("Segoe UI", 12),
-                                                      validate="key",
-                                                      validatecommand=(self.register(helpers.is_digit), "%P"), )
+                                                      validate="key", validatecommand=(
+                product_entry_frame.register(helpers.is_float),
+                "%P",) )
         self.product_sell_unit_price_entry.grid(row=8, column=1, padx=5, pady=(0, 10), sticky=tk.EW)
 
         tk.Label(product_entry_frame,
@@ -141,7 +143,9 @@ class ProductsFrame(tk.Frame):
                  bg="#2c3e50",
                  width=5,
                  font=("Segoe UI", 12)).grid(row=9, column=0, columnspan=2, padx=5, sticky=tk.NSEW)
-        self.unit_conversion_entry = tk.Entry(product_entry_frame, width=5, font=("Segoe UI", 12))
+        self.unit_conversion_entry = tk.Entry(product_entry_frame, width=5, font=("Segoe UI", 12), validate="key", validatecommand=(
+                                                 product_entry_frame.register(helpers.is_float),
+                                                 "%P",))
         self.unit_conversion_entry.grid(row=10, column=0, columnspan=2, padx=5, pady=(0, 10), sticky=tk.EW)
 
         self.unit_conversion_entry.insert("end", "1")
@@ -151,7 +155,9 @@ class ProductsFrame(tk.Frame):
                  bg="#2c3e50",
                  width=5,
                  font=("Segoe UI", 12)).grid(row=11, column=0, padx=5, sticky=tk.NSEW)
-        self.product_current_stock_entry = tk.Entry(product_entry_frame, width=5, font=("Segoe UI", 12) )
+        self.product_current_stock_entry = tk.Entry(product_entry_frame, width=5, font=("Segoe UI", 12), validate="key", validatecommand=(
+                                                 product_entry_frame.register(helpers.is_float),
+                                                 "%P",))
         self.product_current_stock_entry.grid(row=12, column=0, padx=5, pady=(0, 10), sticky=tk.EW)
 
         tk.Label(product_entry_frame,
@@ -161,8 +167,9 @@ class ProductsFrame(tk.Frame):
                  width=5,
                  font=("Segoe UI", 12)).grid(row=11, column=1, padx=5, sticky=tk.NSEW)
         self.product_low_stock_alert_entry = tk.Entry(product_entry_frame, width=5, font=("Segoe UI", 12),
-                                                      validate="key",
-                                                      validatecommand=(self.register(helpers.is_digit), "%P"), )
+                                                      validate="key", validatecommand=(
+                product_entry_frame.register(helpers.is_float),
+                "%P",))
         self.product_low_stock_alert_entry.grid(row=12, column=1, padx=5, pady=(0, 10), sticky=tk.EW)
 
         ttk.Button(product_entry_frame,
@@ -184,7 +191,7 @@ class ProductsFrame(tk.Frame):
         product_current_stock = float(self.product_current_stock_entry.get())
         product_low_stock_alert = float(self.product_low_stock_alert_entry.get())
 
-        if not all([product_code, product_category, product_name, product_base_unit, product_sell_unit,
+        if product_category == "Sanitary" and not all([product_code, product_category, product_name, product_base_unit, product_sell_unit,
                     product_sell_unit_price, unit_conversion, product_current_stock, product_low_stock_alert]):
             messagebox.showerror(
                 title="Missing Information",

@@ -50,8 +50,9 @@ class NewSaleFrame(tk.Frame):
                  font=Font(size=15), ).grid(row=0, column=2)
 
         self.quantity = tk.Spinbox(product_selection_frame, from_=1, to=100000, font=("Arial", 15), width=7,
-                                   validate="key",
-                                   validatecommand=(product_selection_frame.register(helpers.is_digit), "%P"))
+                                   validate="key", validatecommand=(
+                product_selection_frame.register(helpers.is_float),
+                "%P",))
         self.quantity.grid(row=0, column=3)
 
         ttk.Button(product_selection_frame, text="Add", command=self.add_item).grid(row=0, column=4)
@@ -124,8 +125,8 @@ class NewSaleFrame(tk.Frame):
                  font=("Arial", 16, "bold"),
                  anchor=tk.E, ).grid(row=0, column=2, sticky=tk.NSEW)
 
-        self.mrp_total = tk.IntVar(value=0)
-        self.total = tk.IntVar(value=0)
+        self.mrp_total = tk.DoubleVar(value=0)
+        self.total = tk.DoubleVar(value=0)
 
         # MRP Total
         ttk.Separator(invoice_frame, orient="horizontal").grid(row=1, column=0, columnspan=3, pady=(21, 0),
@@ -241,7 +242,7 @@ class NewSaleFrame(tk.Frame):
                  fg="white",
                  bg="#2c3e50",
                  font=("Segoe UI", 12), ).grid(row=9, column=1, sticky=tk.NSEW)
-        self.change = tk.IntVar(value=0)
+        self.change = tk.DoubleVar(value=0)
         tk.Label(invoice_frame,
                  textvariable=self.change,
                  fg="white",
@@ -261,7 +262,7 @@ class NewSaleFrame(tk.Frame):
                  bg="#2c3e50", font=("Segoe UI", 12),
                  fg="white").grid(
             row=10, column=1, sticky=tk.NSEW)
-        self.due = tk.IntVar(value=0)
+        self.due = tk.DoubleVar(value=0)
         tk.Label(invoice_frame,
                  textvariable=self.due,
                  fg="white",
@@ -328,24 +329,25 @@ class NewSaleFrame(tk.Frame):
             messagebox.showerror("Not Found", "This product doesn't exist!")
             return
 
-        quantity = int(self.quantity.get())
+        quantity = float(self.quantity.get())
         if product.category == "Tiles":
-            final_quantity, base_stock = helpers.calculate_base_stock_for_tiles(product, quantity)
-            subtotal = int(product.sell_unit_price) * final_quantity
+            final_quantity, base_qty = helpers.calculate_base_stock_for_tiles(product, quantity)
+            subtotal = float(product.sell_unit_price) * final_quantity
             values = (product.code, product.category, product.name,
-                      final_quantity, product.sell_unit_type, base_stock,
-                      product.sell_unit_price, subtotal)
+                      round(final_quantity, 2), product.sell_unit_type, base_qty,
+                      round(product.sell_unit_price, 2), round(subtotal, 2))
         elif product.category == "Pipe":
             final_quantity, base_qty = helpers.calculate_base_stock_for_pipe(product, quantity)
-            subtotal = int(product.sell_unit_price) * final_quantity
-            values = (product.code, product.category, product.name, final_quantity, product.sell_unit_type, base_qty,
-                      product.sell_unit_price, subtotal)
+            subtotal = float(product.sell_unit_price) * final_quantity
+            values = (product.code, product.category, product.name,
+                      round(final_quantity, 2), product.sell_unit_type, base_qty,
+                      round(product.sell_unit_price, 2), round(subtotal, 2))
 
         else:
             subtotal = product.sell_unit_price * quantity
             values = (product.code, product.category, product.name,
-                      quantity, product.sell_unit_type, "N/A",
-                      product.sell_unit_price, subtotal)
+                      round(quantity, 2), product.sell_unit_type, "N/A",
+                      round(product.sell_unit_price, 2), round(subtotal, 2))
 
         try:
             self.product_entry_treeview.insert("", tk.END, iid=product.code,
@@ -406,7 +408,7 @@ class NewSaleFrame(tk.Frame):
             else:
                 values[col_index] = new_val
 
-            values[SUBTOTAL_COL_INDEX] = str(int(values[QTY_COL_INDEX]) * int(values[RATE_COL_INDEX]))
+            values[SUBTOTAL_COL_INDEX] = str(float(values[QTY_COL_INDEX]) * float(values[RATE_COL_INDEX]))
             self.product_entry_treeview.item(row_id, values=values)
             entry.destroy()
             self.update_calculation()
@@ -430,10 +432,10 @@ class NewSaleFrame(tk.Frame):
         total_item = len(self.product_entry_treeview.get_children())
         self.total_items.set(total_item)
         # Update MRP Total
-        mrp_total_list = [int(self.product_entry_treeview.item(item, "values")[-1]) for item in
+        mrp_total_list = [float(self.product_entry_treeview.item(item, "values")[-1]) for item in
                           self.product_entry_treeview.get_children()]
         mrp_total = sum(mrp_total_list)
-        self.mrp_total.set(mrp_total)
+        self.mrp_total.set(round(mrp_total, 2))
 
         # Update total after subtracting discount
         discount = self.discount_entry.get()
@@ -443,12 +445,11 @@ class NewSaleFrame(tk.Frame):
         if new_value == "":
             new_value = "0"
 
-        if not new_value.isdigit():
-            return False  # block anything that's not a number
-
+        if not helpers.is_float(new_value):
+            return False
         # Update total after subtracting discount
         mrp_total = self.mrp_total.get()
-        discount = int(new_value)
+        discount = float(new_value)
         self.total.set(mrp_total - discount)
         self.calculate_change_due(self.paid_entry.get())
         return True
@@ -457,10 +458,10 @@ class NewSaleFrame(tk.Frame):
         if paid_amount == "":
             paid_amount = "0"
 
-        if not paid_amount.isdigit():
-            return False  # block anything that's not a number
+        if not helpers.is_float(paid_amount):
+            return False
 
-        paid_amount = int(paid_amount)  # Converting str to int
+        paid_amount = float(paid_amount)  # Converting str to int
         if self.total.get() < paid_amount:
             self.change.set(paid_amount - self.total.get())
             self.due.set(0)
@@ -514,7 +515,7 @@ class NewSaleFrame(tk.Frame):
 
         # Make Sale
         sale = self.dbmanager.Invoice(
-            customer_id=current_customer.phone,
+            customer_id=current_customer.id,
             mrp_total=self.mrp_total.get(),
             discount=self.discount_entry.get(),
             total_payable=self.total.get(),
@@ -536,8 +537,8 @@ class NewSaleFrame(tk.Frame):
                 quantity=float(quantity),
                 unit_type=unit_type,
                 base_qty=base_qty,
-                unit_price=int(unit_price),
-                subtotal=int(subtotal),
+                unit_price=float(unit_price),
+                subtotal=float(subtotal),
             )
             # Add SaleItem to invoice
             sale.items.append(saleitem)
@@ -690,22 +691,22 @@ class RefundFrame:
             new_val = entry.get()
             values = list(self.product_entry_treeview.item(row_id, "values"))
 
-            available_product_to_return = int(values[SOLD_QTY_COL_INDEX]) - int(values[RETURN_QTY_P_COL_INDEX])
-            if int(new_val) > available_product_to_return:
+            available_product_to_return = float(values[SOLD_QTY_COL_INDEX]) - float(values[RETURN_QTY_P_COL_INDEX])
+            if float(new_val) > available_product_to_return:
                 messagebox.showwarning(title="Return Limit Exceeded",
                                        message="The return quantity cannot exceed the sold quantity.")
                 return
             values[col_index] = new_val  # Implements Changes
 
             # Update return subtotal
-            values[REFUND_AMT_COL_INDEX] = str(int(values[RF_RATE_COL_INDEX]) * int(values[col_index]))
+            values[REFUND_AMT_COL_INDEX] = str(float(values[RF_RATE_COL_INDEX]) * float(values[col_index]))
             # Update Product in the TreeView
             self.product_entry_treeview.item(row_id, values=values)
 
             # Update total refund
             total_refund = 0
             for item in self.product_entry_treeview.get_children():
-                total_refund += int(self.product_entry_treeview.item(item, "values")[REFUND_AMT_COL_INDEX])
+                total_refund += float(self.product_entry_treeview.item(item, "values")[REFUND_AMT_COL_INDEX])
             self.total_refund_amount.set(total_refund)
 
             entry.destroy()
@@ -718,7 +719,7 @@ class RefundFrame:
             values = self.product_entry_treeview.item(row_id, "values")
 
             # Update product stock in the database
-            product_code, returned_quantity = values[CODE_COL_INDEX], values[-2]
+            product_code, returned_quantity = values[CODE_COL_INDEX], values[RETURNED_QTY_N_COL_INDEX]
             self.dbmanager.update_stock_of_product(product_code, returned_quantity)
 
             # Add refund history to the SaleItem
@@ -739,7 +740,7 @@ class SalesFrame(tk.Frame):
         self.filter_var = tk.StringVar(value="all")
         # Options Frame ------------------------------------------------------------------------------------------------
         options_frame = tk.Frame(self, padx=20, pady=20)
-        options_frame.grid(row=0, column=0, sticky=tk.NSEW)
+        options_frame.grid(row=0, column=0, columnspan=2, sticky=tk.NSEW)
 
         self.all_radio_button = tk.Radiobutton(options_frame, text="All", width=10, fg="white", bg="#3498db",
                                                command=self.all_sales, font=("Arial", 15),
@@ -830,7 +831,7 @@ class SalesFrame(tk.Frame):
 
         # Sales Treeview Frame------------------------------------------------------------------------------------------
         self.sales_treeview_frame = tk.Frame(self)
-        self.sales_treeview_frame.grid(row=1, column=0, sticky=tk.N)
+        self.sales_treeview_frame.grid(row=1, column=0, sticky=tk.W)
 
         self.menu = tk.Menu(self, tearoff=0)
         self.menu.add_command(label="Refresh", command=self.refresh)
@@ -845,13 +846,13 @@ class SalesFrame(tk.Frame):
             self.sales_treeview.heading(col, text=col)
         self.sales_treeview.column("Invoice", width=90, stretch=False, anchor=tk.W)
         self.sales_treeview.column("Date", width=100, stretch=False, anchor=tk.W)
-        self.sales_treeview.column("Time", width=100, stretch=False, anchor=tk.W)
-        self.sales_treeview.column("Customer", width=300, stretch=False, anchor=tk.W)
+        self.sales_treeview.column("Time", width=80, stretch=False, anchor=tk.W)
+        self.sales_treeview.column("Customer", width=295, stretch=False, anchor=tk.W)
         self.sales_treeview.column("Amount", width=100, stretch=False, anchor=tk.W)
         self.sales_treeview.column("Due", width=100, stretch=False, anchor=tk.W)
         self.sales_treeview.tag_configure("evenrow", background="#f0f0f0")
         self.sales_treeview.tag_configure("oddrow", background="#FFFFFF")
-        self.sales_treeview.grid(row=0, column=0, padx=(20, 0), sticky=tk.N)
+        self.sales_treeview.grid(row=0, column=0, padx=(20, 0), sticky=tk.W)
 
         sales_treeview_scrollbar = ttk.Scrollbar(self.sales_treeview_frame, orient=tk.VERTICAL,
                                                  command=self.sales_treeview.yview)
@@ -860,10 +861,10 @@ class SalesFrame(tk.Frame):
         self.sales_treeview.bind("<Button-3>", self.show_menu)
 
         invoice_frame = tk.Frame(self)
-        invoice_frame.grid(row=1, column=1, sticky=tk.NSEW)
+        invoice_frame.grid(row=1, column=1, sticky=tk.W)
 
-        self.invoice_text = tk.Text(invoice_frame, width=55, height=55, font=("Courier New", 6), bd=2, )
-        self.invoice_text.grid(row=0, column=0, padx=(20, 0))
+        self.invoice_text = tk.Text(invoice_frame, width=43, height=33, font=("Courier New", 8), bd=2, )
+        self.invoice_text.grid(row=0, column=0, padx=(20, 0), sticky=tk.W)
         invoice_scrollbar = ttk.Scrollbar(invoice_frame, orient=tk.VERTICAL, command=self.invoice_text.yview)
         invoice_scrollbar.grid(row=0, column=1, sticky=tk.NS)
         self.invoice_text.config(yscrollcommand=invoice_scrollbar.set)
@@ -983,19 +984,22 @@ class SalesFrame(tk.Frame):
     def receive_payment(self):
         selected_invoice_id = self.sales_treeview.selection()[0]
         selected_invoice = self.sales_treeview.item(selected_invoice_id, "values")
-        due_amount = int(selected_invoice[-1])
+        due_amount = float(selected_invoice[-1])
 
         if due_amount <= 0:
             messagebox.showinfo(title="No Due Payment", message="This invoice has no due payment.")
             return
         else:
             def update_invoice_with_new_payment():
-                received_amount = int(payment_received_entry.get())
+                received_amount = float(payment_received_entry.get())
                 if received_amount > invoice.due:
                     messagebox.showinfo(message="Received amount is greater than due amount. Check and try again!")
                     return
                 invoice.paid += received_amount
                 invoice.due -= received_amount
+                customer_due_payment_history = self.dbmanager.CustomerDuePayment(amount=received_amount)
+                invoice.payment_history.append(customer_due_payment_history)
+                self.dbmanager.add_customer_due_payment_history(customer_due_payment_history)
                 self.dbmanager.update_changes()
                 payment_win.destroy()
                 self.refresh()
@@ -1004,7 +1008,7 @@ class SalesFrame(tk.Frame):
             payment_win.title("Receive Payment")
             payment_win.config(padx=20, pady=20)
 
-            self.center_window(payment_win, 215, 260)
+            self.center_window(payment_win, 215, 290)
 
             invoice_id = selected_invoice[0]
             invoice = self.dbmanager.get_invoice(invoice_id)
@@ -1045,7 +1049,7 @@ class SalesFrame(tk.Frame):
                                                                                                               sticky=tk.W)
             tk.Label(payment_win, text=":", font=("Segoe UI", 12, "bold"), anchor=tk.W, ).grid(row=4, column=1,
                                                                                                sticky=tk.W)
-            payment_received_entry = tk.Entry(payment_win, width=6, font=("Segoe UI", 12))
+            payment_received_entry = tk.Entry(payment_win, width=10, font=("Segoe UI", 12))
             payment_received_entry.focus_set()
             payment_received_entry.grid(row=4, column=2)
             tk.Button(payment_win, text="Confirm", command=update_invoice_with_new_payment).grid(row=5, column=1,

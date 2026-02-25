@@ -4,153 +4,89 @@ import sqlite3
 import tkinter as tk
 import win32print
 import win32ui
-from escpos.printer import Usb
 import textwrap
 
-from sqlalchemy.testing.util import round_decimal
+SHOP_NAME = "M. Rahman Ceramic Centre"
+SHOP_ADDRESS_1 = "Purbadhala Moddho Bazar"
+SHOP_ADDRESS_2 = "(Opposite of Boro Mashjid)"
+SHOP_ADDRESS_3 = "Purbadhala, Netrakona"
+SHOP_PHONE = "Contact: 01714963360, 01713566434"
+INVOICE_WIDTH = 43
+ITEM_WIDTH = 11
+QTY_WIDTH = 8
+RATE_WIDTH = 8
+BASE_QTY_WIDTH = 7
+SUBTOTAL = 9
 
-SHOP_NAME = "SHOP_NAME"
-SHOP_ADDRESS = "SHOP_ADDRESS"
-SHOP_PHONE = "Contact: SHOP_PHONE"
-INVOICE_WIDTH = 60
 
 def make_invoice_for_sale(invoice):
-    # ready_invoice = "=" * INVOICE_WIDTH + "\n"
-    # ready_invoice += f"{SHOP_NAME.center(INVOICE_WIDTH)}\n"
-    # ready_invoice += f"{SHOP_ADDRESS.center(INVOICE_WIDTH)}\n"
-    # ready_invoice += f"{SHOP_PHONE.center(INVOICE_WIDTH)}\n"
-    # ready_invoice += f"{"Sales Invoice".center(INVOICE_WIDTH)}\n"
-    # ready_invoice += "=" * INVOICE_WIDTH + "\n"
-    # ready_invoice += f"{"Invoice No".ljust(INVOICE_WIDTH // 2)}:" + f"{str(invoice.id).rjust((INVOICE_WIDTH // 2) -1)}\n"
-    # ready_invoice += f"{"Date".ljust(INVOICE_WIDTH // 2)}:" + f"{invoice.date.strftime('%d-%m-%Y').rjust((INVOICE_WIDTH // 2) - 1)}\n"
-    # ready_invoice += f"{"Time".ljust(INVOICE_WIDTH // 2)}:" + f"{invoice.time.strftime('%I:%M %p').rjust((INVOICE_WIDTH // 2) - 1)}\n"
-    # ready_invoice += "-" * INVOICE_WIDTH + "\n"
-    # ready_invoice += "Code".ljust(5) + "Item".ljust(15) + "Qty".ljust(6) + "Unit".ljust(6) + "Rate".ljust(5) + "Base Qty".ljust(15) + "Subtotal".rjust(12) + "\n"
-    # for item in invoice.items:
-    #     ready_invoice += f"{item.product_code}".ljust(5) + f"{item.product_name}"[:15].ljust(15) + f"{item.quantity}".rjust(
-    #         5) + f"{item.unit_price}".rjust(
-    #         5) + f"{item.base_qty}".ljust(15) + f"{item.subtotal}".rjust(10)+ "\n"
-    # ready_invoice += "-" * INVOICE_WIDTH + "\n"
-    # ready_invoice += "MRP Total:".rjust(INVOICE_WIDTH + 1) + f"{invoice.mrp_total}".rjust(INVOICE_WIDTH - 1) + "\n"
-    # ready_invoice += "(-) Discount:".rjust(INVOICE_WIDTH + 1) + f"{invoice.discount}".rjust(INVOICE_WIDTH - 1) + "\n"
-    # ready_invoice += f"{"-" * int(INVOICE_WIDTH - 1)}".rjust(INVOICE_WIDTH) + "\n"
-    # ready_invoice += "Total Payable:".rjust(INVOICE_WIDTH + 1) + f"{invoice.total_payable}".rjust(INVOICE_WIDTH -1) + "\n"
-    # ready_invoice += "Paid:".rjust(INVOICE_WIDTH + 1) + f"{invoice.paid}".rjust(INVOICE_WIDTH - 1) + "\n"
-    # ready_invoice += f"{"-" * int(INVOICE_WIDTH - 1)}".rjust(INVOICE_WIDTH) + "\n"
-    # ready_invoice += "Change:".rjust(INVOICE_WIDTH + 1) + f"{invoice.change}".rjust(INVOICE_WIDTH - 1) + "\n"
-    # ready_invoice += "Due:".rjust(INVOICE_WIDTH + 1) + f"{invoice.due}".rjust(INVOICE_WIDTH - 1) + "\n"
-    # ready_invoice += "-" * INVOICE_WIDTH + "\n\n"
-    # ready_invoice += f"Customer ID: {invoice.customer.phone}\n"
-    # ready_invoice += f"Name: {invoice.customer.name}\n"
-    # ready_invoice += f"Address: {invoice.customer.address}\n"
-    # ready_invoice += "Thank you for your purchase!".center(INVOICE_WIDTH) + "\n\n"
-    # ready_invoice += "     পণ্য ফেরতের জন্য রিসিপ্ট আবশ্যক।".center(INVOICE_WIDTH)
-
-
-
-
-    WIDTH = 60  # change if needed
-
     def hr():
-        return "-" * WIDTH
+        return "-" * INVOICE_WIDTH
 
     def eq():
-        return "=" * WIDTH
+        return "=" * INVOICE_WIDTH
 
-    def format_money(x):
-        return f"{x:.0f}"
+    def money(x):
+        return f"{x:.2f}"
 
-    def print_invoice(invoice):
-        p = Usb(0x04b8, 0x0e15)  # change to your printer
+    def wrap(text, width):
+        return textwrap.wrap(str(text), width)
 
-        def line(txt=""):
-            p.text(txt + "\n")
+    ready_invoice = "=" * INVOICE_WIDTH + "\n"
+    ready_invoice += f"{SHOP_NAME.center(INVOICE_WIDTH)}\n"
+    ready_invoice += f"{SHOP_ADDRESS_1.center(INVOICE_WIDTH)}\n"
+    ready_invoice += f"{SHOP_ADDRESS_2.center(INVOICE_WIDTH)}\n"
+    ready_invoice += f"{SHOP_ADDRESS_3.center(INVOICE_WIDTH)}\n"
+    ready_invoice += f"{SHOP_PHONE.center(INVOICE_WIDTH)}\n"
+    ready_invoice += f"{"Sales Invoice".center(INVOICE_WIDTH)}\n"
+    ready_invoice += "=" * INVOICE_WIDTH + "\n"
+    ready_invoice += f"{"Invoice No".ljust(INVOICE_WIDTH // 2)}:" + f"{str(invoice.id).rjust((INVOICE_WIDTH // 2) - 1)}\n"
+    ready_invoice += f"{"Date".ljust(INVOICE_WIDTH // 2)}:" + f"{invoice.date.strftime('%d-%m-%Y').rjust((INVOICE_WIDTH // 2) - 1)}\n"
+    ready_invoice += f"{"Time".ljust(INVOICE_WIDTH // 2)}:" + f"{invoice.time.strftime('%I:%M %p').rjust((INVOICE_WIDTH // 2) - 1)}\n"
+    ready_invoice += "-" * INVOICE_WIDTH + "\n"
+    ready_invoice += "Item".ljust(ITEM_WIDTH) + "Qty".ljust(QTY_WIDTH) + "Rate".ljust(
+        RATE_WIDTH) + "B. Qty".ljust(BASE_QTY_WIDTH) + "Subtotal".rjust(SUBTOTAL) + "\n"
 
-        # ================= HEADER =================
-        p.set(align="center", bold=True)
-        line(eq())
-        line(SHOP_NAME)
-        line(SHOP_ADDRESS)
-        line(SHOP_PHONE)
-        line("Sales Invoice")
-        line(eq())
-        p.set(bold=False)
-        p.set(align="left")
+    for sl, item in enumerate(invoice.items):
+        name_lines = wrap(item.product_name, ITEM_WIDTH - 1)
+        qty_lines = [str(round(item.quantity, 2)), item.unit_type]
+        base_lines = item.base_qty.split(" ")
+        max_lines = max(len(name_lines), len(qty_lines), len(base_lines), 1)
 
-        line(f"{'Invoice No'.ljust(30)}: {str(invoice.id).rjust(25)}")
-        line(f"{'Date'.ljust(30)}: {invoice.date.strftime('%d-%m-%Y').rjust(25)}")
-        line(f"{'Time'.ljust(30)}: {invoice.time.strftime('%I:%M %p').rjust(25)}")
+        for i in range(max_lines):
+            item_name = name_lines[i] if i < len(name_lines) else ""
+            qty = qty_lines[i] if i < len(qty_lines) else ""
+            rate = money(item.unit_price) if i == 0 else ""
+            base = base_lines[i] if i < len(base_lines) else ""
+            subtotal = money(item.subtotal) if i == 0 else ""
 
-        line(hr())
-        line("Code Item              Qty  Rate    Base            Subtotal")
-        line("                     Qty")
-        line(hr())
+            row = item_name.ljust(ITEM_WIDTH) + qty.ljust(QTY_WIDTH) + rate.ljust(RATE_WIDTH) + base.ljust(
+                BASE_QTY_WIDTH) + subtotal.rjust(SUBTOTAL) + "\n"
 
-        # ================= ITEMS =================
-        for item in invoice.items:
+            ready_invoice += row
 
-            name_lines = textwrap.wrap(item.product_name, 20)
+        ready_invoice += "\n"
 
-            qty_lines = [
-                str(item.quantity),
-                item.unit_type
-            ]
-
-            base_lines = []
-            if item.base_qty:
-                base_lines = textwrap.wrap(str(item.base_qty), 12)
-
-            max_lines = max(len(name_lines), len(qty_lines), len(base_lines), 1)
-
-            for i in range(max_lines):
-                code = str(item.product_code) if i == 0 else ""
-                name = name_lines[i] if i < len(name_lines) else ""
-                qty = qty_lines[i] if i < len(qty_lines) else ""
-                rate = format_money(item.unit_price) if i == 0 else ""
-                base = base_lines[i] if i < len(base_lines) else ""
-                sub = format_money(item.subtotal) if i == 0 else ""
-
-                row = (
-                        code.ljust(5) +
-                        name.ljust(20) +
-                        qty.rjust(6) +
-                        rate.rjust(7) +
-                        base.center(12) +
-                        sub.rjust(10)
-                )
-
-                line(row)
-
-            line("")
-
-        # ================= TOTALS =================
-        line(hr())
-        line(f"{'MRP Total:'.rjust(45)}{format_money(invoice.mrp_total).rjust(15)}")
-        line(f"{'(-) Discount:'.rjust(45)}{format_money(invoice.discount).rjust(15)}")
-        line("-" * (WIDTH - 1))
-        line(f"{'Total Payable:'.rjust(45)}{format_money(invoice.total_payable).rjust(15)}")
-        line(f"{'Paid:'.rjust(45)}{format_money(invoice.paid).rjust(15)}")
-        line("-" * (WIDTH - 1))
-        line(f"{'Change:'.rjust(45)}{format_money(invoice.change).rjust(15)}")
-        line(f"{'Due:'.rjust(45)}{format_money(invoice.due).rjust(15)}")
-
-        line(hr())
-
-        # ================= CUSTOMER =================
-        line(f"Customer ID: {invoice.customer.phone}")
-        line(f"Name: {invoice.customer.name}")
-        line(f"Address: {invoice.customer.address}")
-
-        p.set(align="center")
-        line("")
-        line("Thank you for your purchase!")
-        line("")
-        line("পণ্য ফেরতের জন্য রিসিপ্ট আবশ্যক।")
-
-        p.cut()
-
-    print_invoice(invoice)
-    return "something"
+    ready_invoice += "-" * INVOICE_WIDTH + "\n"
+    ready_invoice += "MRP Total:".rjust(INVOICE_WIDTH // 2 + 1) + f"{invoice.mrp_total}".rjust(
+        INVOICE_WIDTH // 2 - 1) + "\n"
+    ready_invoice += "(-) Discount:".rjust(INVOICE_WIDTH // 2 + 1) + f"{invoice.discount}".rjust(
+        INVOICE_WIDTH // 2 - 1) + "\n"
+    ready_invoice += f"{"-" * int(INVOICE_WIDTH // 2 - 1)}".rjust(INVOICE_WIDTH) + "\n"
+    ready_invoice += "Total Payable:".rjust(INVOICE_WIDTH // 2 + 1) + f"{invoice.total_payable}".rjust(
+        INVOICE_WIDTH // 2 - 1) + "\n"
+    ready_invoice += "Paid:".rjust(INVOICE_WIDTH // 2 + 1) + f"{invoice.paid}".rjust(INVOICE_WIDTH // 2 - 1) + "\n"
+    ready_invoice += f"{"-" * int(INVOICE_WIDTH // 2 - 1)}".rjust(INVOICE_WIDTH) + "\n"
+    ready_invoice += "Change:".rjust(INVOICE_WIDTH // 2 + 1) + f"{invoice.change}".rjust(INVOICE_WIDTH // 2 - 1) + "\n"
+    ready_invoice += "Due:".rjust(INVOICE_WIDTH // 2 + 1) + f"{invoice.due}".rjust(INVOICE_WIDTH // 2 - 1) + "\n"
+    ready_invoice += "-" * INVOICE_WIDTH + "\n\n"
+    ready_invoice += f"Customer ID: {invoice.customer.phone}\n"
+    ready_invoice += f"Name: {invoice.customer.name}\n"
+    ready_invoice += f"Address: {invoice.customer.address}\n"
+    ready_invoice += "Thank you for your purchase!".center(INVOICE_WIDTH) + "\n\n"
+    ready_invoice += "পণ্য ফেরতের জন্য রিসিপ্ট আবশ্যক।".center(INVOICE_WIDTH)
+    print(ready_invoice)
+    return ready_invoice
 
 
 def print_out_invoice(invoice):
@@ -165,7 +101,7 @@ def print_out_invoice(invoice):
     # ---- SET FONT ----
     font = win32ui.CreateFont({
         "name": "Courier New",
-        "height": 20,
+        "height": 26,
         "weight": 4000
     })
     hdc.SelectObject(font)
@@ -196,10 +132,21 @@ def validate_phone_number(phone_number):
     return phone_number.isdigit() and len(phone_number) <= 11
 
 
+def is_float(value):
+    if value == "" or value == "-":
+        return True
+    try:
+        float(value)
+        return True
+    except ValueError:
+        return False
+
+
 def is_digit(value):
     if value == "":
         return True
     return value.isdigit()
+
 
 class AutoCompleteEntry(tk.Entry):
     def __init__(self, master, db_path, **kwargs):
@@ -219,6 +166,7 @@ class AutoCompleteEntry(tk.Entry):
         self.bind("<Up>", self._move_up)
         self.bind("<Return>", self._select)
         self.bind("<Button-1>", self._select)
+        self.bind("<ButtonRelease-1>", self._select)
         self.bind("<Escape>", lambda e: self._hide())
 
     # ---------------- CORE ----------------
@@ -285,7 +233,6 @@ class AutoCompleteEntry(tk.Entry):
 
         self.listbox.bind("<ButtonRelease-1>", self._select)
 
-
     def _hide(self):
         if self.dropdown:
             self.dropdown.destroy()
@@ -297,7 +244,13 @@ class AutoCompleteEntry(tk.Entry):
         if not self.listbox:
             return
 
-        value = self.listbox.get(tk.ACTIVE)
+        selection = self.listbox.curselection()
+        if not selection:
+            return
+
+        index = selection[0]
+        value = self.listbox.get(index)
+
         self.var.set(value)
         self._hide()
         self.icursor(tk.END)
@@ -337,6 +290,7 @@ class AutoCompleteEntry(tk.Entry):
             self.var.set(f"{row[0]} — {row[1]}")
             self._hide()
 
+
 class AutoCompleteEntryForSuppliers(AutoCompleteEntry):
     def _search_db(self, keyword):
         con = sqlite3.connect(self.db_path)
@@ -370,15 +324,17 @@ class AutoCompleteEntryForSuppliers(AutoCompleteEntry):
             self.var.set(f"{row[0]} — {row[1]}")
             self._hide()
 
+
 def calculate_base_stock_for_tiles(tiles, sft_quantity):
-    size = tiles.name.split(",")[0] # Taking Tiles size from product's name
-    height, width = size.split("x") # Taking height and width from tiles
-    sft_per_tiles = round(int(height) * int(width) / 144, 3) # Taking sft (Using round() for decimal rounding)
+    size = tiles.name.split(",")[0]  # Taking Tiles size from product's name
+    height, width = size.split("x")  # Taking height and width from tiles
+    sft_per_tiles = round(int(height) * int(width) / 144, 3)  # Taking sft (Using round() for decimal rounding)
     final_quantity = round(math.ceil(float(sft_quantity) / sft_per_tiles) * sft_per_tiles, 3)
     pcs_needed = round(final_quantity / sft_per_tiles)
     box, pcs = divmod(pcs_needed, tiles.pcs_per_box)
     base_qty = f"{int(box)}B {int(pcs)}P"
     return final_quantity, base_qty
+
 
 def calculate_base_stock_for_pipe(pipe, ft_quantity):
     final_quantity = round(int(ft_quantity) / int(pipe.conversion_factor)) * int(pipe.conversion_factor)

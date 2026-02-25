@@ -11,8 +11,8 @@ class ExpensesFrame(tk.Frame):
         self.dbmanager = dbmanager
         self.filter_var = tk.StringVar(value="all_expenses")
         # Options Frame ------------------------------------------------------------------------------------------------
-        options_frame = tk.Frame(self, padx=20, pady=20)
-        options_frame.grid(row=0, column=0, sticky=tk.NSEW)
+        options_frame = tk.Frame(self,  )
+        options_frame.grid(row=0, column=0,padx=20, pady=(20, 0), sticky=tk.NSEW)
 
         self.all_expenses_radio_button = tk.Radiobutton(options_frame, text="All\nExpenses", width=10, fg="white",
                                                         bg="#3498db",

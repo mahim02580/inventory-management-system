@@ -184,3 +184,42 @@ def get_expenses_by_date(date_obj):
 def add_new_expense(new_expense):
     session.add(new_expense)
     session.commit()
+
+
+# Payments
+def add_customer_due_payment_history(customer_due_payment_history_obj):
+    session.add(customer_due_payment_history_obj)
+    session.commit()
+
+def add_supplier_due_payment_history(supplier_due_payment_history_obj):
+    session.add(supplier_due_payment_history_obj)
+    session.commit()
+
+
+# Dashboard
+def today_due_received():
+    today = datetime.today().date()
+    today_due_received_amount = session.execute(select(CustomerDuePayment).where(CustomerDuePayment.date == today)).scalars().all()
+    return today_due_received_amount
+
+def today_sales_returns():
+    today = datetime.today().date()
+    today_returns = session.execute(select(Refund).where(Refund.date == today)).scalars().all()
+    return today_returns
+
+def today_purchases():
+    today = datetime.today().date()
+    today_purchases_obj = session.execute(select(Purchase).where(Purchase.purchase_date == today)).scalars().all()
+    return today_purchases_obj
+
+def today_supplier_payments():
+    today = datetime.today().date()
+    today_supplier_due_payments = session.execute(select(SupplierDuePayment).where(SupplierDuePayment.date == today)).scalars().all()
+    return today_supplier_due_payments
+
+def today_expenses():
+    today = datetime.today().date()
+    today_expenses_obj = session.execute(select(Expense).where(Expense.date == today)).scalars().all()
+    return today_expenses_obj
+
+

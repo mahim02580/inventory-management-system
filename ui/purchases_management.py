@@ -45,8 +45,9 @@ class NewPurchase(tk.Frame):
                  font=Font(size=15), ).grid(row=0, column=2)
 
         self.quantity = tk.Spinbox(product_selection_frame, from_=1, to=100000, font=("Arial", 15), width=7,
-                                   validate="key",
-                                   validatecommand=(product_selection_frame.register(helpers.is_digit), "%P"))
+                                   validate="key", validatecommand=(
+                product_selection_frame.register(helpers.is_float),
+                "%P",))
         self.quantity.grid(row=0, column=3)
 
         ttk.Button(product_selection_frame, text="Add", command=self.add_item).grid(row=0, column=4)
@@ -120,8 +121,8 @@ class NewPurchase(tk.Frame):
                  font=("Arial", 16, "bold"),
                  anchor=tk.E, ).grid(row=0, column=2, sticky=tk.NSEW)
 
-        self.mrp_total = tk.IntVar(value=0)
-        self.total = tk.IntVar(value=0)
+        self.mrp_total = tk.DoubleVar(value=0.00)
+        self.total = tk.DoubleVar(value=0.00)
 
         # MRP Total
         ttk.Separator(purchase_invoice_frame, orient="horizontal").grid(row=1, column=0, columnspan=3, pady=(21, 0),
@@ -166,7 +167,8 @@ class NewPurchase(tk.Frame):
                                        highlightthickness=1,
                                        highlightcolor="#2c3e50",
                                        font=("Segoe UI", 12),
-                                       justify=tk.RIGHT, )
+                                       justify=tk.RIGHT,
+                                       )
 
         self.discount_entry.insert(tk.END, "0")
         self.discount_entry.grid(row=3, column=2, sticky=tk.EW)
@@ -232,7 +234,7 @@ class NewPurchase(tk.Frame):
                  bg="#2c3e50", font=("Segoe UI", 12),
                  fg="white").grid(
             row=10, column=1, sticky=tk.NSEW)
-        self.due = tk.IntVar(value=0)
+        self.due = tk.DoubleVar(value=0.00)
         tk.Label(purchase_invoice_frame,
                  textvariable=self.due,
                  fg="white",
@@ -291,24 +293,25 @@ class NewPurchase(tk.Frame):
             messagebox.showerror("Not Found", "This product doesn't exist!")
             return
 
-        quantity = int(self.quantity.get())
+        quantity = float(self.quantity.get())
         if product.category == "Tiles":
-            final_quantity, base_stock = helpers.calculate_base_stock_for_tiles(product, quantity)
-            subtotal = int(product.sell_unit_price) * final_quantity
+            final_quantity, base_qty = helpers.calculate_base_stock_for_tiles(product, quantity)
+            subtotal = float(product.sell_unit_price) * final_quantity
             values = (product.code, product.category, product.name,
-                      final_quantity, product.sell_unit_type, base_stock,
-                      product.sell_unit_price, subtotal)
+                      round(final_quantity, 2), product.sell_unit_type, base_qty,
+                      round(product.sell_unit_price, 2), round(subtotal, 2))
         elif product.category == "Pipe":
             final_quantity, base_qty = helpers.calculate_base_stock_for_pipe(product, quantity)
-            subtotal = int(product.sell_unit_price) * final_quantity
-            values = (product.code, product.category, product.name, final_quantity, product.sell_unit_type, base_qty,
-                      product.sell_unit_price, subtotal)
+            subtotal = float(product.sell_unit_price) * final_quantity
+            values = (product.code, product.category, product.name,
+                      round(final_quantity, 2), product.sell_unit_type, base_qty,
+                      round(product.sell_unit_price, 2), round(subtotal, 2))
 
         else:
             subtotal = product.sell_unit_price * quantity
             values = (product.code, product.category, product.name,
-                      quantity, product.sell_unit_type, "N/A",
-                      product.sell_unit_price, subtotal)
+                      round(quantity, 2), product.sell_unit_type, "N/A",
+                      round(product.sell_unit_price, 2), round(subtotal, 2))
 
         try:
             self.product_entry_treeview.insert("", tk.END, iid=product.code,
@@ -369,7 +372,7 @@ class NewPurchase(tk.Frame):
             else:
                 values[col_index] = new_val
 
-            values[SUBTOTAL_COL_INDEX] = str(int(values[QTY_COL_INDEX]) * int(values[RATE_COL_INDEX]))
+            values[SUBTOTAL_COL_INDEX] = str(float(values[QTY_COL_INDEX]) * float(values[RATE_COL_INDEX]))
             self.product_entry_treeview.item(row_id, values=values)
             entry.destroy()
             self.update_calculation()
@@ -417,7 +420,7 @@ class NewPurchase(tk.Frame):
         purchase = self.dbmanager.Purchase(
             supplier_id=supplier.id,
             total_payable=self.total.get(),
-            paid=self.paid_amount_entry.get(),
+            paid=float(self.paid_amount_entry.get()),
             due=self.due.get(),
             delivery_date=date_obj,
             status=DEFAULT_PURCHASE_STATUS  # Default Status -> Pending
@@ -432,11 +435,11 @@ class NewPurchase(tk.Frame):
                 product_code=code,
                 product_category=category,
                 product_name=product_name,
-                quantity=int(quantity),
+                quantity=float(quantity),
                 unit_type=unit,
                 base_qty=base_qty,
-                unit_price=int(rate),
-                subtotal=int(subtotal),
+                unit_price=float(rate),
+                subtotal=float(subtotal),
             )
             # Add PurchaseItem to Purchase
             purchase.items.append(purchase_item)
@@ -467,9 +470,9 @@ class NewPurchase(tk.Frame):
         self.total_items.set(total_items)
 
         # Update MRP Total
-        mrp_total_list = [int(self.product_entry_treeview.item(item, "values")[-1]) for item in
+        mrp_total_list = [float(self.product_entry_treeview.item(item, "values")[-1]) for item in
                           self.product_entry_treeview.get_children()]
-        mrp_total = sum(mrp_total_list)
+        mrp_total = round(sum(mrp_total_list), 2)
         self.mrp_total.set(mrp_total)
 
         # Update total after subtracting discount
@@ -480,13 +483,14 @@ class NewPurchase(tk.Frame):
         if new_value == "":
             new_value = "0"
 
-        if not new_value.isdigit():
-            return False  # block anything that's not a number
+        if not helpers.is_float(new_value):
+            return False
 
         # Update total after subtracting discount
         mrp_total = self.mrp_total.get()
-        discount = int(new_value)
-        self.total.set(mrp_total - discount)
+        discount = float(new_value)
+        total_payable = round(mrp_total - discount, 2)
+        self.total.set(total_payable)
         self.calculate_due(self.paid_amount_entry.get())
         return True
 
@@ -494,15 +498,16 @@ class NewPurchase(tk.Frame):
         if paid == "":
             paid = "0"
 
-        if not paid.isdigit():
-            return False  # block anything that's not a number
+        if not helpers.is_float(paid):
+            return False
 
-        paid_amount = int(paid)
-        total_payable = int(self.total.get())
+        paid_amount = float(paid)
+        total_payable = self.total.get()
         if paid_amount < total_payable:
-            self.due.set(total_payable - paid_amount)
+            due = round(total_payable - paid_amount, 2)
+            self.due.set(due)
         else:
-            self.due.set(0)
+            self.due.set(0.00)
         return True
 
     def show_menu(self, event):
@@ -518,8 +523,8 @@ class PurchasesFrame(tk.Frame):
         self.dbmanager = dbmanager
         self.filter_var = tk.StringVar(value="all_purchases")
         # Options Frame ------------------------------------------------------------------------------------------------
-        options_frame = tk.Frame(self, padx=20, pady=20)
-        options_frame.grid(row=0, column=0, sticky=tk.NSEW)
+        options_frame = tk.Frame(self)
+        options_frame.grid(row=0, column=0, padx=20, pady=(20, 0), sticky=tk.NSEW)
 
         self.all_purchases_radio_button = tk.Radiobutton(options_frame, text="All\nPurchases", width=10, fg="white",
                                                          bg="#3498db",
@@ -633,13 +638,13 @@ class PurchasesFrame(tk.Frame):
 
         for col in columns:
             self.purchases_treeview.heading(col, text=col)
-        self.purchases_treeview.column("Supplier", width=150, stretch=False, anchor=tk.W)
+        self.purchases_treeview.column("Supplier", width=160, stretch=False, anchor=tk.W)
         self.purchases_treeview.column("Purchase Date", width=180, stretch=False, anchor=tk.W)
         self.purchases_treeview.column("Delivery Date", width=200, stretch=False, anchor=tk.W)
         self.purchases_treeview.column("Total Payable", width=150, stretch=False, anchor=tk.W)
         self.purchases_treeview.column("Paid", width=150, stretch=False, anchor=tk.W)
         self.purchases_treeview.column("Due", width=150, stretch=False, anchor=tk.W)
-        self.purchases_treeview.column("Status", width=100, stretch=False, anchor=tk.W)
+        self.purchases_treeview.column("Status", width=120, stretch=False, anchor=tk.W)
         self.purchases_treeview.tag_configure("evenrow", background="#f0f0f0")
         self.purchases_treeview.tag_configure("oddrow", background="#FFFFFF")
         self.purchases_treeview.grid(row=0, column=0, padx=(20, 0), pady=20, sticky=tk.N)
@@ -729,7 +734,7 @@ class PurchasesFrame(tk.Frame):
 
     def insert_purchases_to_treeview(self, purchases):
         self.purchases_treeview.delete(*self.purchases_treeview.get_children())
-        for i, purchase in enumerate(purchases):
+        for i, purchase in enumerate(purchases[::-1]):
             tag = "evenrow" if i % 2 == 0 else "oddrow"
             self.purchases_treeview.insert(
                 "",
@@ -773,7 +778,7 @@ class PurchasesFrame(tk.Frame):
         # UI
         purchased_products_toplevel = tk.Toplevel(self.purchases_treeview_frame)
         purchased_products_toplevel.resizable(False, False)
-        self.center_window(purchased_products_toplevel, 500, 875)
+        self.center_window(purchased_products_toplevel, 500, 975)
         columns = ("Code", "Category", "Product Name", "Qty", "Unit", "Base Qty", "Rate", "Subtotal")
         purchased_products_list_treeview = ttk.Treeview(purchased_products_toplevel,
                                                         columns=columns,
@@ -790,11 +795,11 @@ class PurchasesFrame(tk.Frame):
         purchased_products_list_treeview.column("Code", width=85, stretch=False, )
         purchased_products_list_treeview.column("Category", width=80, stretch=False, )
         purchased_products_list_treeview.column("Product Name", width=300, stretch=False, )
-        purchased_products_list_treeview.column("Qty", width=70, stretch=False, anchor=tk.E)
+        purchased_products_list_treeview.column("Qty", width=100, stretch=False, anchor=tk.E)
         purchased_products_list_treeview.column("Unit", width=50, stretch=False)
-        purchased_products_list_treeview.column("Base Qty", width=85, stretch=False, anchor=tk.CENTER)
-        purchased_products_list_treeview.column("Rate", width=60, stretch=False, anchor=tk.CENTER)
-        purchased_products_list_treeview.column("Subtotal", width=85, stretch=False, anchor=tk.CENTER)
+        purchased_products_list_treeview.column("Base Qty", width=100, stretch=False, anchor=tk.CENTER)
+        purchased_products_list_treeview.column("Rate", width=100, stretch=False, anchor=tk.CENTER)
+        purchased_products_list_treeview.column("Subtotal", width=100, stretch=False, anchor=tk.CENTER)
 
         purchased_products_list_treeview.grid(row=0, column=0, padx=(20, 0), pady=20)
 
@@ -809,15 +814,16 @@ class PurchasesFrame(tk.Frame):
             tag = "evenrow" if i % 2 == 0 else "oddrow"
             purchased_products_list_treeview.insert("", tk.END,
                                                     values=(purchase_item.product_code, purchase_item.product_category,
-                                                            purchase_item.product_name, purchase_item.quantity,
+                                                            purchase_item.product_name,
+                                                            round(purchase_item.quantity, 2),
                                                             purchase_item.unit_type, purchase_item.base_qty,
-                                                            purchase_item.unit_price,
-                                                            purchase_item.subtotal), tags=tag)
+                                                            round(purchase_item.unit_price, 2),
+                                                            round(purchase_item.subtotal, 2)), tags=tag)
 
     def order_received(self):
         purchase_id = self.purchases_treeview.selection()[0]
         purchase = self.dbmanager.get_purchase_by_id(purchase_id)
-        if not purchase.status == "Pending":
+        if purchase.status == "Received":
             messagebox.showinfo(title="Already Received", message="This Order has been Received")
             return
 
@@ -830,14 +836,14 @@ class PurchasesFrame(tk.Frame):
     def pay_due_payment(self):
         selected_purchase_id = self.purchases_treeview.selection()[0]
         selected_invoice_values = self.purchases_treeview.item(selected_purchase_id, "values")
-        due_amount = int(selected_invoice_values[DUE_AMT_INDEX])
+        due_amount = float(selected_invoice_values[DUE_AMT_INDEX])
 
         if due_amount <= 0:
             messagebox.showinfo(title="No Due Payment", message="This invoice has no due payment.")
             return
         else:
             def update_purchase_with_due_payment():
-                received_amount = int(payment_received_entry.get())
+                received_amount = float(payment_received_entry.get())
                 if received_amount > purchase.due:
                     messagebox.showinfo(title="Amount Limit Exceeds",
                                         message="Received amount is greater than due amount. Check and try again!")
@@ -845,6 +851,9 @@ class PurchasesFrame(tk.Frame):
 
                 purchase.paid += received_amount
                 purchase.due -= received_amount
+                supplier_due_payment_history = self.dbmanager.SupplierDuePayment(amount=received_amount)
+                purchase.payment_history.append(supplier_due_payment_history)
+                self.dbmanager.add_supplier_due_payment_history(supplier_due_payment_history)
                 self.dbmanager.update_changes()
                 due_pay_win.destroy()
                 self.refresh()
@@ -853,7 +862,7 @@ class PurchasesFrame(tk.Frame):
             due_pay_win.title("Pay Due Payment")
             due_pay_win.config(padx=20, pady=20)
 
-            self.center_window(due_pay_win, 215, 260)
+            self.center_window(due_pay_win, 195, 265)
 
             purchase_id = selected_purchase_id
             purchase = self.dbmanager.get_purchase_by_id(purchase_id)
@@ -863,7 +872,7 @@ class PurchasesFrame(tk.Frame):
                      anchor=tk.W, ).grid(row=1, column=0, sticky=tk.W)
             tk.Label(due_pay_win, text=":", font=("Segoe UI", 12, "bold"),
                      anchor=tk.W, ).grid(row=1, column=1, sticky=tk.W)
-            tk.Label(due_pay_win, text=f"{purchase.total_payable}", font=("Segoe UI", 12, "bold"),
+            tk.Label(due_pay_win, text=f"{purchase.total_payable:.2f}", font=("Segoe UI", 12, "bold"),
                      anchor=tk.W, ).grid(row=1, column=2, sticky=tk.W)
 
             # Paid
@@ -871,7 +880,7 @@ class PurchasesFrame(tk.Frame):
                      anchor=tk.W, ).grid(row=2, column=0, sticky=tk.W)
             tk.Label(due_pay_win, text=":", font=("Segoe UI", 12, "bold"),
                      anchor=tk.W, ).grid(row=2, column=1, sticky=tk.W)
-            tk.Label(due_pay_win, text=f"{purchase.paid}", font=("Segoe UI", 12, "bold"),
+            tk.Label(due_pay_win, text=f"{purchase.paid:.2f}", font=("Segoe UI", 12, "bold"),
                      anchor=tk.W, ).grid(row=2, column=2, sticky=tk.W)
 
             # Due
@@ -879,7 +888,7 @@ class PurchasesFrame(tk.Frame):
                      anchor=tk.W, ).grid(row=3, column=0, sticky=tk.W)
             tk.Label(due_pay_win, text=":", fg="red", font=("Segoe UI", 12, "bold"),
                      anchor=tk.W, ).grid(row=3, column=1, sticky=tk.W)
-            tk.Label(due_pay_win, text=f"{purchase.due}", fg="red", font=("Segoe UI", 12, "bold"),
+            tk.Label(due_pay_win, text=f"{purchase.due:.2f}", fg="red", font=("Segoe UI", 12, "bold"),
                      anchor=tk.W, ).grid(row=3, column=2, sticky=tk.W)
 
             tk.Label(due_pay_win, text="Due Pay Amount", font=("Segoe UI", 12, "bold"), anchor=tk.W, ).grid(row=4,
@@ -887,9 +896,9 @@ class PurchasesFrame(tk.Frame):
                                                                                                             sticky=tk.W)
             tk.Label(due_pay_win, text=":", font=("Segoe UI", 12, "bold"), anchor=tk.W, ).grid(row=4, column=1,
                                                                                                sticky=tk.W)
-            payment_received_entry = tk.Entry(due_pay_win, width=6, font=("Segoe UI", 12))
+            payment_received_entry = tk.Entry(due_pay_win, width=8, font=("Segoe UI", 12))
             payment_received_entry.focus_set()
-            payment_received_entry.grid(row=4, column=2)
+            payment_received_entry.grid(row=4, column=2, sticky=tk.EW)
             tk.Button(due_pay_win, text="Confirm", command=update_purchase_with_due_payment).grid(row=5, column=1,
                                                                                                   columnspan=2,
                                                                                                   pady=10,

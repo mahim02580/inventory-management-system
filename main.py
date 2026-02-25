@@ -97,7 +97,8 @@ class App(tk.Tk):
                    style="Sidebar.TButton",
                    command=lambda: self.show_frame("customers")).grid(row=14, column=0, sticky=tk.EW)
         ttk.Separator(self.sidebar_frame, orient="horizontal").grid(row=15, column=0, sticky=tk.EW)
-
+        # tk.Label(self.sidebar_frame, text="Developed by MM Mahim", bg="#2c3e50", fg="white", font=("Arial", 11, "bold")).grid(row=16, column=0, pady=(270, 0))
+        # tk.Label(self.sidebar_frame, text="Call: 01722919677", bg="#2c3e50", fg="white", font=("Arial", 11, "bold")).grid(row=17, column=0)
         # Frames for content
         self.frames = {}
         for name, frame_class in {
